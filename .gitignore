@@ -34,3 +34,10 @@ vignettes/*.pdf
 
 # Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
 rsconnect/
+
+
+# ignoring big data files
+*.RDS
+*.RData
+*.csv
+*.xlsx
