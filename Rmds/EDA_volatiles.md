@@ -9,433 +9,108 @@ output:
 
 
 
-The original raw data excel file (LK_CompositeData_w_Partial_Flux_Final.xlsx) is fairly complicated. It has multiple sheets, references and calculations. The first sheet is the one that contains all of the data. So, I tried importing that one using the `readxl::read_xlsx` function but it failed to import. There must have been some formatting issue. I opted to use `read_csv` and transform the first sheet of the excel data into a csv file. I couldn't delete any of the morphological traits since it change the references for the volatile data. I just left it as is, removed all formating with colors, highlights, merged cells and removed the first explanatory cell. All of this was done by hand and not scripted. 
+The original raw data excel file (LK_CompositeData_w_Partial_Flux_Final.xlsx) is fairly complicated. It has multiple sheets, references and calculations. The first sheet is the one that contains all of the data. So, I tried importing that one using the `readxl::read_xlsx` function but it failed to import. There must have been some formatting issue. I opted to use `read_csv` and transform the first sheet of the excel data into a csv file. I couldn't delete any of the morphological traits since it change the references for the volatile data. I just left it as is, removed all formating with colors, highlights, merged cells and removed the first explanatory row. All of this was done by hand and not scripted. 
 
 
 
 ```
-##   [1] "Fam #"                                         
-##   [2] "Sample Name"                                   
-##   [3] "Cholor."                                       
-##   [4] "Bio"                                           
-##   [5] "PTR"                                           
-##   [6] "Date PTR"                                      
-##   [7] "Date on Diss."                                 
-##   [8] "Sample_Sex"                                    
-##   [9] "Sex on Dissection"                             
-##  [10] "% Exp."                                        
-##  [11] "Avg Male Buds/Stem"                            
-##  [12] "Total Buds"                                    
-##  [13] "Avg. Arch."                                    
-##  [14] "Initial Avg Area"                              
-##  [15] "Initial Avg Perim."                            
-##  [16] "Initial Avg Circ."                             
-##  [17] "Avg Area (Week 1)"                             
-##  [18] "Avg Perim. (Week 1)"                           
-##  [19] "Avg Circ. (Week 1)"                            
-##  [20] "Avg Area (Week 2)"                             
-##  [21] "Avg Perim. (Week 2)"                           
-##  [22] "Avg Circ. (Week 2)"                            
-##  [23] "Avg Area (Week 3)"                             
-##  [24] "Avg Perim. (Week 3)"                           
-##  [25] "Avg Circ. (Week 3)"                            
-##  [26] "Avg Perim Rate"                                
-##  [27] "Avg Area Rate"                                 
-##  [28] "Avg 21 days"                                   
-##  [29] "Avg Days til Gam"                              
-##  [30] "Length Leaf A"                                 
-##  [31] "Length Leaf A (mm)"                            
-##  [32] "Length Leaf B"                                 
-##  [33] "Leaf length B (mm)"                            
-##  [34] "Length Leaf C"                                 
-##  [35] "Length leaf C (mm)"                            
-##  [36] "Length Average"                                
-##  [37] "Column30"                                      
-##  [38] "Area Leaf A"                                   
-##  [39] "Area leaf A (mm2)"                             
-##  [40] "Area Leaf B"                                   
-##  [41] "Area leaf B (mm2)"                             
-##  [42] "Area Leaf C"                                   
-##  [43] "Area leaf C (mm2)"                             
-##  [44] "Area Average"                                  
-##  [45] "Average Area (mm)"                             
-##  [46] "Perim Leaf A"                                  
-##  [47] "Perimeter Leaf A (mm)"                         
-##  [48] "Perim Leaf B"                                  
-##  [49] "Perimeter Leaf B (mm)"                         
-##  [50] "Perim Leaf C"                                  
-##  [51] "Perimeter Leaf C (mm)"                         
-##  [52] "Perim Average"                                 
-##  [53] "perim average (mm)"                            
-##  [54] "Sample_name_double check"                      
-##  [55] "m29.9975_FLUX"                                 
-##  [56] "m29.9975 ((NO)+) (Conc)2"                      
-##  [57] "m30.99783_FLUX"                                
-##  [58] "m30.99783 ((NO)+_(15N)) (Conc)2"               
-##  [59] "m31.01783_FLUX"                                
-##  [60] "m31.01783 (formaldehyde H+) (Conc)2"           
-##  [61] "m31.9908_FLUX2"                                
-##  [62] "m31.9908 ((O2)+) (Conc)22"                     
-##  [63] "m32.99853_FLUX"                                
-##  [64] "m32.99853 ((O2)+_(17O)) (Conc)2"               
-##  [65] "m33.03230_FLUX"                                
-##  [66] "m33.03230 (methanol H+) (Conc)2"               
-##  [67] "m33.98721_FLUX"                                
-##  [68] "m33.98721 ((O2)+_(18O)) (Conc)2"               
-##  [69] "m34.02317_FLUX"                                
-##  [70] "m34.02317 (m34_2) (Conc)2"                     
-##  [71] "m37.0289_FLUX"                                 
-##  [72] "m37.0289 (cluster (H2O)H3O+) (Conc)2"          
-##  [73] "m39.0326 (cluster (H2O)H3O+_(18O)) (Conc)"     
-##  [74] "m39.0326 (cluster (H2O)H3O+_(18O)) (Conc)2"    
-##  [75] "m41.0375_FLUX"                                 
-##  [76] "m41.0375 (propyne H+) (Conc)2"                 
-##  [77] "m42.0343 (acetonitrile H+) (Conc)"             
-##  [78] "m42.0343 (acetonitrile H+) (Conc)2"            
-##  [79] "m42.95810 (m43_1) (Conc)"                      
-##  [80] "m42.95810 (m43_1) (Conc)2"                     
-##  [81] "m43.01734_FLUX"                                
-##  [82] "m43.01734 (m43_2) (Conc)2"                     
-##  [83] "m44.0626_FLUX"                                 
-##  [84] "m44.0626 (propane) (Conc)2"                    
-##  [85] "m45.0335_FLUX"                                 
-##  [86] "m45.0335 (acetaldehyde H+) (Conc)2"            
-##  [87] "m45.99328_FLUX"                                
-##  [88] "m45.99328 ((NO2)+) (Conc)2"                    
-##  [89] "m46.03111_FLUX"                                
-##  [90] "m46.03111 (m46_2) (Conc)2"                     
-##  [91] "m46.06609_FLUX"                                
-##  [92] "m46.06609 (m46_3) (Conc)2"                     
-##  [93] "m47.0128_FLUX"                                 
-##  [94] "m47.0128 (formic acid H+) (Conc)2"             
-##  [95] "m47.9847_FLUX"                                 
-##  [96] "m47.9847 ((O3)+) (Conc)2"                      
-##  [97] "m49.0239_FLUX"                                 
-##  [98] "m49.0239 (methanethiol H+) (Conc)2"            
-##  [99] "m49.05240_FLUX"                                
-## [100] "m49.05240 (ethanol H+_(18O)) (Conc)2"          
-## [101] "m49.9923 (chloromethane) (Conc)"               
-## [102] "m49.9923 (chloromethane) (Conc)2"              
-## [103] "m55.0390 (cluster (H2O)2-H3O+) (Conc)"         
-## [104] "m55.0390 (cluster (H2O)2-H3O+) (Conc)2"        
-## [105] "m57.02382_FLUX"                                
-## [106] "m57.02382 (acrolein H+) (Conc)2"               
-## [107] "m57.05991 (cluster (H2O)2-H3O+_(18O)) (Conc)"  
-## [108] "m57.05991 (cluster (H2O)2-H3O+_(18O)) (Conc)2" 
-## [109] "m59.0439_FLUX"                                 
-## [110] "m59.0439 (acetone H+) (Conc)2"                 
-## [111] "m61.0290_FLUX"                                 
-## [112] "m61.0290 (acetic acid H+) (Conc)2"             
-## [113] "m62.0294_FLUX"                                 
-## [114] "m62.0294 (acetic acid H+_(13C)) (Conc)2"       
-## [115] "m63.023_FLUX"                                  
-## [116] "m63.023 (ethanethiol H+) (Conc)2"              
-## [117] "m69.00377_FLUX"                                
-## [118] "m69.00377 ((C4H4O)H+) (Conc)2"                 
-## [119] "m69.06994_FLUX"                                
-## [120] "m69.06994 (isoprene H+) (Conc)2"               
-## [121] "m71.0354_FLUX"                                 
-## [122] "m71.0354 (crotonaldehyde H+) (Conc)2"          
-## [123] "m73.0376 (butyraldehyde H+) (Conc)"            
-## [124] "m73.0376 (butyraldehyde H+) (Conc)2"           
-## [125] "m75.0446_FLUX"                                 
-## [126] "m75.0446 (propionic acid H+) (Conc)2"          
-## [127] "m77.0597_FLUX"                                 
-## [128] "m77.0597 (propylene glycol H+) (Conc)2"        
-## [129] "m79.05478_FLUX"                                
-## [130] "m79.05478 (benzene H+) (Conc)2"                
-## [131] "m81.0699_FLUX"                                 
-## [132] "m81.0699 (cyclohexadiene H+) (Conc)2"          
-## [133] "m83.0585_FLUX"                                 
-## [134] "m83.0585 (methylfuran H+) (Conc)2"             
-## [135] "m85.0648_FLUX"                                 
-## [136] "m85.0648 (cyclopentanone H+) (Conc)2"          
-## [137] "m86.0362_FLUX"                                 
-## [138] "m86.0362 ((C4H6O2)+) (Conc)2"                  
-## [139] "m87.0441_FLUX"                                 
-## [140] "m87.0441 ((C4H6O2)H+ (acid)) (Conc)2"          
-## [141] "m89.05810 (butyric acid H+) (Conc)"            
-## [142] "m89.05810 (butyric acid H+) (Conc)2"           
-## [143] "m89.09610_FLUX"                                
-## [144] "m89.09610 (MTBE) (Conc)2"                      
-## [145] "m90.00000_FLUX"                                
-## [146] "m90.00000 (nominal 90) (Conc)2"                
-## [147] "m91.00000_FLUX"                                
-## [148] "m91.00000 (nominal 91) (Conc)2"                
-## [149] "m92.00000 (nominal 92) (Conc)"                 
-## [150] "m92.00000 (nominal 92) (Conc)2"                
-## [151] "m93.0699_FLUX"                                 
-## [152] "m93.0699 (toluene H+) (Conc)2"                 
-## [153] "M94_FLUX"                                      
-## [154] "m942"                                          
-## [155] "m95.00000-FLUX"                                
-## [156] "m95.00000 (nominal 95) (Conc)2"                
-## [157] "m97.00000_FLUX"                                
-## [158] "m97.00000 (nominal 97) (Conc)2"                
-## [159] "m98.00000 (nominal 98) (Conc)"                 
-## [160] "m98.00000 (nominal 98) (Conc)2"                
-## [161] "m99.080 (cyclohexanone H+) (Conc)"             
-## [162] "m99.080 (cyclohexanone H+) (Conc)2"            
-## [163] "m100.00000_FLUX"                               
-## [164] "m100.00000 (nominal 100) (Conc)2"              
-## [165] "m101.00000_flux"                               
-## [166] "m101.00000 (nominal 101) (Conc)2"              
-## [167] "m103.1117_FLUX"                                
-## [168] "m103.1117 (ETBE H+) (Conc)2"                   
-## [169] "m104_FLUX"                                     
-## [170] "m104"                                          
-## [171] "m105_FLUK"                                     
-## [172] "m105.0699 (styrene H+) (Conc)"                 
-## [173] "m106.00000_FLUX"                               
-## [174] "m106.00000 (nominal 106) (Conc)2"              
-## [175] "m107.0855_FLUX"                                
-## [176] "m107.0855 (xylene H+, ethylbenzene H+) (Conc)2"
-## [177] "m108.0000_FLUX"                                
-## [178] "m108.00000 (nominal 108) (Conc)2"              
-## [179] "m109.00000 (nominal 109) (Conc)"               
-## [180] "m109.00000 (nominal 109) (Conc)2"              
-## [181] "m110.00000_FLUX"                               
-## [182] "m110.00000 (nominal 110) (Conc)2"              
-## [183] "m111.00000_FLUX"                               
-## [184] "m111.00000 (nominal 111) (Conc)2"              
-## [185] "m113.00000_FLUX"                               
-## [186] "m113.00000 (nominal 113) (Conc)2"              
-## [187] "m114.00000_FLUX"                               
-## [188] "m114.00000 (nominal 114) (Conc)2"              
-## [189] "m115.00000_FLUX"                               
-## [190] "m115.00000 (nominal 115) (Conc)2"              
-## [191] "m119.00000_FLUX"                               
-## [192] "m119.00000 (nominal 119) (Conc)2"              
-## [193] "m121.1012_FLUX"                                
-## [194] "m121.1012 ((C9H12)H+) (Conc)2"                 
-## [195] "m124.00000_FLUX"                               
-## [196] "m124.00000 (nominal 124) (Conc)2"              
-## [197] "m125.00000_FLUX"                               
-## [198] "m125.00000 (nominal 125) (Conc)2"              
-## [199] "M126_FLUX"                                     
-## [200] "m126.00000 (nominal 126) (Conc)"               
-## [201] "m127.00000_FLUX"                               
-## [202] "m127.00000 (nominal 127) (Conc)2"              
-## [203] "m128.00000_FLUX"                               
-## [204] "m128.00000 (nominal 128) (Conc)2"              
-## [205] "m129.00000_FLUX"                               
-## [206] "m129.00000 (nominal 129) (Conc)2"              
-## [207] "m130.00000_FLUX"                               
-## [208] "m130.00000 (nominal 130) (Conc)2"              
-## [209] "m135.1168_FLUX"                                
-## [210] "m135.1168 ((C10H14)H+) (Conc)2"                
-## [211] "m137.1325 (terpenes H+) (Conc)"                
-## [212] "m137.1325 (terpenes H+) (Conc)2"               
-## [213] "m138.00000 (nominal 138) (Conc)"               
-## [214] "m138.00000 (nominal 138) (Conc)2"              
-## [215] "m139.1481 (menthol dehydrated) (Conc)"         
-## [216] "m139.1481 (menthol dehydrated) (Conc)2"        
-## [217] "m141.00000_FLUX"                               
-## [218] "m141.00000 (nominal 141) (Conc)2"              
-## [219] "m143.00000_FLUX"                               
-## [220] "m143.00000 (nominal 143) (Conc)2"              
-## [221] "m148.00000_FLUX"                               
-## [222] "m148.00000 (nominal 148) (Conc)2"              
-## [223] "m149.00000_FLUX"                               
-## [224] "m149.00000 (nominal 149) (Conc)2"              
-## [225] "m150.00000_FLUX"                               
-## [226] "m150.00000 (nominal 150) (Conc)2"              
-## [227] "m151.00000_FLUX"                               
-## [228] "m151.00000 (nominal 151) (Conc)2"              
-## [229] "m153"                                          
-## [230] "m1532"                                         
-## [231] "m163.00000_FLUX"                               
-## [232] "m163.00000 (nominal 163) (Conc)2"              
-## [233] "m204.00000_FLUX"                               
-## [234] "m204.00000 (nominal 204) (Conc)2"
+## [1] 1419  183
 ```
 
+The dimmensions associated to this don't make much sense because I was under the impression that there were 600ish samples. There must be some NAs or blank cells in here.
+
+
 ```
-##   [1] "Fam #"                                         
-##   [2] "Sample Name"                                   
-##   [3] "Sample_name_double check"                      
-##   [4] "m29.9975_FLUX"                                 
-##   [5] "m29.9975 ((NO)+) (Conc)2"                      
-##   [6] "m30.99783_FLUX"                                
-##   [7] "m30.99783 ((NO)+_(15N)) (Conc)2"               
-##   [8] "m31.01783_FLUX"                                
-##   [9] "m31.01783 (formaldehyde H+) (Conc)2"           
-##  [10] "m31.9908_FLUX2"                                
-##  [11] "m31.9908 ((O2)+) (Conc)22"                     
-##  [12] "m32.99853_FLUX"                                
-##  [13] "m32.99853 ((O2)+_(17O)) (Conc)2"               
-##  [14] "m33.03230_FLUX"                                
-##  [15] "m33.03230 (methanol H+) (Conc)2"               
-##  [16] "m33.98721_FLUX"                                
-##  [17] "m33.98721 ((O2)+_(18O)) (Conc)2"               
-##  [18] "m34.02317_FLUX"                                
-##  [19] "m34.02317 (m34_2) (Conc)2"                     
-##  [20] "m37.0289_FLUX"                                 
-##  [21] "m37.0289 (cluster (H2O)H3O+) (Conc)2"          
-##  [22] "m39.0326 (cluster (H2O)H3O+_(18O)) (Conc)"     
-##  [23] "m39.0326 (cluster (H2O)H3O+_(18O)) (Conc)2"    
-##  [24] "m41.0375_FLUX"                                 
-##  [25] "m41.0375 (propyne H+) (Conc)2"                 
-##  [26] "m42.0343 (acetonitrile H+) (Conc)"             
-##  [27] "m42.0343 (acetonitrile H+) (Conc)2"            
-##  [28] "m42.95810 (m43_1) (Conc)"                      
-##  [29] "m42.95810 (m43_1) (Conc)2"                     
-##  [30] "m43.01734_FLUX"                                
-##  [31] "m43.01734 (m43_2) (Conc)2"                     
-##  [32] "m44.0626_FLUX"                                 
-##  [33] "m44.0626 (propane) (Conc)2"                    
-##  [34] "m45.0335_FLUX"                                 
-##  [35] "m45.0335 (acetaldehyde H+) (Conc)2"            
-##  [36] "m45.99328_FLUX"                                
-##  [37] "m45.99328 ((NO2)+) (Conc)2"                    
-##  [38] "m46.03111_FLUX"                                
-##  [39] "m46.03111 (m46_2) (Conc)2"                     
-##  [40] "m46.06609_FLUX"                                
-##  [41] "m46.06609 (m46_3) (Conc)2"                     
-##  [42] "m47.0128_FLUX"                                 
-##  [43] "m47.0128 (formic acid H+) (Conc)2"             
-##  [44] "m47.9847_FLUX"                                 
-##  [45] "m47.9847 ((O3)+) (Conc)2"                      
-##  [46] "m49.0239_FLUX"                                 
-##  [47] "m49.0239 (methanethiol H+) (Conc)2"            
-##  [48] "m49.05240_FLUX"                                
-##  [49] "m49.05240 (ethanol H+_(18O)) (Conc)2"          
-##  [50] "m49.9923 (chloromethane) (Conc)"               
-##  [51] "m49.9923 (chloromethane) (Conc)2"              
-##  [52] "m55.0390 (cluster (H2O)2-H3O+) (Conc)"         
-##  [53] "m55.0390 (cluster (H2O)2-H3O+) (Conc)2"        
-##  [54] "m57.02382_FLUX"                                
-##  [55] "m57.02382 (acrolein H+) (Conc)2"               
-##  [56] "m57.05991 (cluster (H2O)2-H3O+_(18O)) (Conc)"  
-##  [57] "m57.05991 (cluster (H2O)2-H3O+_(18O)) (Conc)2" 
-##  [58] "m59.0439_FLUX"                                 
-##  [59] "m59.0439 (acetone H+) (Conc)2"                 
-##  [60] "m61.0290_FLUX"                                 
-##  [61] "m61.0290 (acetic acid H+) (Conc)2"             
-##  [62] "m62.0294_FLUX"                                 
-##  [63] "m62.0294 (acetic acid H+_(13C)) (Conc)2"       
-##  [64] "m63.023_FLUX"                                  
-##  [65] "m63.023 (ethanethiol H+) (Conc)2"              
-##  [66] "m69.00377_FLUX"                                
-##  [67] "m69.00377 ((C4H4O)H+) (Conc)2"                 
-##  [68] "m69.06994_FLUX"                                
-##  [69] "m69.06994 (isoprene H+) (Conc)2"               
-##  [70] "m71.0354_FLUX"                                 
-##  [71] "m71.0354 (crotonaldehyde H+) (Conc)2"          
-##  [72] "m73.0376 (butyraldehyde H+) (Conc)"            
-##  [73] "m73.0376 (butyraldehyde H+) (Conc)2"           
-##  [74] "m75.0446_FLUX"                                 
-##  [75] "m75.0446 (propionic acid H+) (Conc)2"          
-##  [76] "m77.0597_FLUX"                                 
-##  [77] "m77.0597 (propylene glycol H+) (Conc)2"        
-##  [78] "m79.05478_FLUX"                                
-##  [79] "m79.05478 (benzene H+) (Conc)2"                
-##  [80] "m81.0699_FLUX"                                 
-##  [81] "m81.0699 (cyclohexadiene H+) (Conc)2"          
-##  [82] "m83.0585_FLUX"                                 
-##  [83] "m83.0585 (methylfuran H+) (Conc)2"             
-##  [84] "m85.0648_FLUX"                                 
-##  [85] "m85.0648 (cyclopentanone H+) (Conc)2"          
-##  [86] "m86.0362_FLUX"                                 
-##  [87] "m86.0362 ((C4H6O2)+) (Conc)2"                  
-##  [88] "m87.0441_FLUX"                                 
-##  [89] "m87.0441 ((C4H6O2)H+ (acid)) (Conc)2"          
-##  [90] "m89.05810 (butyric acid H+) (Conc)"            
-##  [91] "m89.05810 (butyric acid H+) (Conc)2"           
-##  [92] "m89.09610_FLUX"                                
-##  [93] "m89.09610 (MTBE) (Conc)2"                      
-##  [94] "m90.00000_FLUX"                                
-##  [95] "m90.00000 (nominal 90) (Conc)2"                
-##  [96] "m91.00000_FLUX"                                
-##  [97] "m91.00000 (nominal 91) (Conc)2"                
-##  [98] "m92.00000 (nominal 92) (Conc)"                 
-##  [99] "m92.00000 (nominal 92) (Conc)2"                
-## [100] "m93.0699_FLUX"                                 
-## [101] "m93.0699 (toluene H+) (Conc)2"                 
-## [102] "M94_FLUX"                                      
-## [103] "m942"                                          
-## [104] "m95.00000-FLUX"                                
-## [105] "m95.00000 (nominal 95) (Conc)2"                
-## [106] "m97.00000_FLUX"                                
-## [107] "m97.00000 (nominal 97) (Conc)2"                
-## [108] "m98.00000 (nominal 98) (Conc)"                 
-## [109] "m98.00000 (nominal 98) (Conc)2"                
-## [110] "m99.080 (cyclohexanone H+) (Conc)"             
-## [111] "m99.080 (cyclohexanone H+) (Conc)2"            
-## [112] "m100.00000_FLUX"                               
-## [113] "m100.00000 (nominal 100) (Conc)2"              
-## [114] "m101.00000_flux"                               
-## [115] "m101.00000 (nominal 101) (Conc)2"              
-## [116] "m103.1117_FLUX"                                
-## [117] "m103.1117 (ETBE H+) (Conc)2"                   
-## [118] "m104_FLUX"                                     
-## [119] "m104"                                          
-## [120] "m105_FLUK"                                     
-## [121] "m105.0699 (styrene H+) (Conc)"                 
-## [122] "m106.00000_FLUX"                               
-## [123] "m106.00000 (nominal 106) (Conc)2"              
-## [124] "m107.0855_FLUX"                                
-## [125] "m107.0855 (xylene H+, ethylbenzene H+) (Conc)2"
-## [126] "m108.0000_FLUX"                                
-## [127] "m108.00000 (nominal 108) (Conc)2"              
-## [128] "m109.00000 (nominal 109) (Conc)"               
-## [129] "m109.00000 (nominal 109) (Conc)2"              
-## [130] "m110.00000_FLUX"                               
-## [131] "m110.00000 (nominal 110) (Conc)2"              
-## [132] "m111.00000_FLUX"                               
-## [133] "m111.00000 (nominal 111) (Conc)2"              
-## [134] "m113.00000_FLUX"                               
-## [135] "m113.00000 (nominal 113) (Conc)2"              
-## [136] "m114.00000_FLUX"                               
-## [137] "m114.00000 (nominal 114) (Conc)2"              
-## [138] "m115.00000_FLUX"                               
-## [139] "m115.00000 (nominal 115) (Conc)2"              
-## [140] "m119.00000_FLUX"                               
-## [141] "m119.00000 (nominal 119) (Conc)2"              
-## [142] "m121.1012_FLUX"                                
-## [143] "m121.1012 ((C9H12)H+) (Conc)2"                 
-## [144] "m124.00000_FLUX"                               
-## [145] "m124.00000 (nominal 124) (Conc)2"              
-## [146] "m125.00000_FLUX"                               
-## [147] "m125.00000 (nominal 125) (Conc)2"              
-## [148] "M126_FLUX"                                     
-## [149] "m126.00000 (nominal 126) (Conc)"               
-## [150] "m127.00000_FLUX"                               
-## [151] "m127.00000 (nominal 127) (Conc)2"              
-## [152] "m128.00000_FLUX"                               
-## [153] "m128.00000 (nominal 128) (Conc)2"              
-## [154] "m129.00000_FLUX"                               
-## [155] "m129.00000 (nominal 129) (Conc)2"              
-## [156] "m130.00000_FLUX"                               
-## [157] "m130.00000 (nominal 130) (Conc)2"              
-## [158] "m135.1168_FLUX"                                
-## [159] "m135.1168 ((C10H14)H+) (Conc)2"                
-## [160] "m137.1325 (terpenes H+) (Conc)"                
-## [161] "m137.1325 (terpenes H+) (Conc)2"               
-## [162] "m138.00000 (nominal 138) (Conc)"               
-## [163] "m138.00000 (nominal 138) (Conc)2"              
-## [164] "m139.1481 (menthol dehydrated) (Conc)"         
-## [165] "m139.1481 (menthol dehydrated) (Conc)2"        
-## [166] "m141.00000_FLUX"                               
-## [167] "m141.00000 (nominal 141) (Conc)2"              
-## [168] "m143.00000_FLUX"                               
-## [169] "m143.00000 (nominal 143) (Conc)2"              
-## [170] "m148.00000_FLUX"                               
-## [171] "m148.00000 (nominal 148) (Conc)2"              
-## [172] "m149.00000_FLUX"                               
-## [173] "m149.00000 (nominal 149) (Conc)2"              
-## [174] "m150.00000_FLUX"                               
-## [175] "m150.00000 (nominal 150) (Conc)2"              
-## [176] "m151.00000_FLUX"                               
-## [177] "m151.00000 (nominal 151) (Conc)2"              
-## [178] "m153"                                          
-## [179] "m1532"                                         
-## [180] "m163.00000_FLUX"                               
-## [181] "m163.00000 (nominal 163) (Conc)2"              
-## [182] "m204.00000_FLUX"                               
-## [183] "m204.00000 (nominal 204) (Conc)2"
+##                    Fam #              Sample Name Sample_name_double check 
+##                      773                      756                      813 
+##            m29.9975_FLUX m29.9975 ((NO)+) (Conc)2           m30.99783_FLUX 
+##                      773                      773                      773
 ```
+This tells me thera re more than 700 values with NAs in the dataframe. We are going to remove all the ones with NAs in the Family, because those are probably just remnants from excels autofill or something like that. 
+
+
+```
+## # A tibble: 6 x 182
+##   `Fam #` `Sample Name` m29.9975_FLUX `m29.9975 ((NO)~ m30.99783_FLUX
+##     <dbl> <chr>                 <dbl>            <dbl>          <dbl>
+## 1       5 P_11_16_15     -0.00000542            -360.   -0.0000000234
+## 2      33 P_24_5_18      -0.000000571            -36.6   0.0000000311
+## 3       3 P_1_6_7        -0.00000105             -29.2  -0.0000000213
+## 4       3 P_1_6_2        -0.00000265             -27.5   0.0000000145
+## 5       3 P_1_6_2        -0.00000134             -32.3  -0.0000000154
+## 6      16 P_18_1_13_B    -0.00000874            -422.   -0.0000000476
+## # ... with 177 more variables: `m30.99783 ((NO)+_(15N)) (Conc)2` <dbl>,
+## #   m31.01783_FLUX <dbl>, `m31.01783 (formaldehyde H+) (Conc)2` <dbl>,
+## #   m31.9908_FLUX2 <dbl>, `m31.9908 ((O2)+) (Conc)22` <dbl>,
+## #   m32.99853_FLUX <dbl>, `m32.99853 ((O2)+_(17O)) (Conc)2` <dbl>,
+## #   m33.03230_FLUX <dbl>, `m33.03230 (methanol H+) (Conc)2` <dbl>,
+## #   m33.98721_FLUX <dbl>, `m33.98721 ((O2)+_(18O)) (Conc)2` <dbl>,
+## #   m34.02317_FLUX <dbl>, `m34.02317 (m34_2) (Conc)2` <dbl>,
+## #   m37.0289_FLUX <dbl>, `m37.0289 (cluster (H2O)H3O+) (Conc)2` <dbl>,
+## #   `m39.0326 (cluster (H2O)H3O+_(18O)) (Conc)` <dbl>, `m39.0326 (cluster
+## #   (H2O)H3O+_(18O)) (Conc)2` <dbl>, m41.0375_FLUX <dbl>, `m41.0375
+## #   (propyne H+) (Conc)2` <dbl>, `m42.0343 (acetonitrile H+)
+## #   (Conc)` <dbl>, `m42.0343 (acetonitrile H+) (Conc)2` <dbl>, `m42.95810
+## #   (m43_1) (Conc)` <dbl>, `m42.95810 (m43_1) (Conc)2` <dbl>,
+## #   m43.01734_FLUX <dbl>, `m43.01734 (m43_2) (Conc)2` <dbl>,
+## #   m44.0626_FLUX <dbl>, `m44.0626 (propane) (Conc)2` <dbl>,
+## #   m45.0335_FLUX <dbl>, `m45.0335 (acetaldehyde H+) (Conc)2` <dbl>,
+## #   m45.99328_FLUX <dbl>, `m45.99328 ((NO2)+) (Conc)2` <dbl>,
+## #   m46.03111_FLUX <dbl>, `m46.03111 (m46_2) (Conc)2` <dbl>,
+## #   m46.06609_FLUX <dbl>, `m46.06609 (m46_3) (Conc)2` <dbl>,
+## #   m47.0128_FLUX <dbl>, `m47.0128 (formic acid H+) (Conc)2` <dbl>,
+## #   m47.9847_FLUX <dbl>, `m47.9847 ((O3)+) (Conc)2` <dbl>,
+## #   m49.0239_FLUX <dbl>, `m49.0239 (methanethiol H+) (Conc)2` <dbl>,
+## #   m49.05240_FLUX <dbl>, `m49.05240 (ethanol H+_(18O)) (Conc)2` <dbl>,
+## #   `m49.9923 (chloromethane) (Conc)` <dbl>, `m49.9923 (chloromethane)
+## #   (Conc)2` <dbl>, `m55.0390 (cluster (H2O)2-H3O+) (Conc)` <dbl>,
+## #   `m55.0390 (cluster (H2O)2-H3O+) (Conc)2` <dbl>, m57.02382_FLUX <dbl>,
+## #   `m57.02382 (acrolein H+) (Conc)2` <dbl>, `m57.05991 (cluster
+## #   (H2O)2-H3O+_(18O)) (Conc)` <dbl>, `m57.05991 (cluster
+## #   (H2O)2-H3O+_(18O)) (Conc)2` <dbl>, m59.0439_FLUX <dbl>, `m59.0439
+## #   (acetone H+) (Conc)2` <dbl>, m61.0290_FLUX <dbl>, `m61.0290 (acetic
+## #   acid H+) (Conc)2` <dbl>, m62.0294_FLUX <dbl>, `m62.0294 (acetic acid
+## #   H+_(13C)) (Conc)2` <dbl>, m63.023_FLUX <dbl>, `m63.023 (ethanethiol
+## #   H+) (Conc)2` <dbl>, m69.00377_FLUX <dbl>, `m69.00377 ((C4H4O)H+)
+## #   (Conc)2` <dbl>, m69.06994_FLUX <dbl>, `m69.06994 (isoprene H+)
+## #   (Conc)2` <dbl>, m71.0354_FLUX <dbl>, `m71.0354 (crotonaldehyde H+)
+## #   (Conc)2` <dbl>, `m73.0376 (butyraldehyde H+) (Conc)` <dbl>, `m73.0376
+## #   (butyraldehyde H+) (Conc)2` <dbl>, m75.0446_FLUX <dbl>, `m75.0446
+## #   (propionic acid H+) (Conc)2` <dbl>, m77.0597_FLUX <dbl>, `m77.0597
+## #   (propylene glycol H+) (Conc)2` <dbl>, m79.05478_FLUX <dbl>, `m79.05478
+## #   (benzene H+) (Conc)2` <dbl>, m81.0699_FLUX <dbl>, `m81.0699
+## #   (cyclohexadiene H+) (Conc)2` <dbl>, m83.0585_FLUX <dbl>, `m83.0585
+## #   (methylfuran H+) (Conc)2` <dbl>, m85.0648_FLUX <dbl>, `m85.0648
+## #   (cyclopentanone H+) (Conc)2` <dbl>, m86.0362_FLUX <dbl>, `m86.0362
+## #   ((C4H6O2)+) (Conc)2` <dbl>, m87.0441_FLUX <dbl>, `m87.0441 ((C4H6O2)H+
+## #   (acid)) (Conc)2` <dbl>, `m89.05810 (butyric acid H+) (Conc)` <dbl>,
+## #   `m89.05810 (butyric acid H+) (Conc)2` <dbl>, m89.09610_FLUX <dbl>,
+## #   `m89.09610 (MTBE) (Conc)2` <dbl>, m90.00000_FLUX <dbl>, `m90.00000
+## #   (nominal 90) (Conc)2` <dbl>, m91.00000_FLUX <dbl>, `m91.00000 (nominal
+## #   91) (Conc)2` <dbl>, `m92.00000 (nominal 92) (Conc)` <dbl>, `m92.00000
+## #   (nominal 92) (Conc)2` <dbl>, m93.0699_FLUX <dbl>, `m93.0699 (toluene
+## #   H+) (Conc)2` <dbl>, M94_FLUX <dbl>, m942 <dbl>,
+## #   `m95.00000-FLUX` <dbl>, `m95.00000 (nominal 95) (Conc)2` <dbl>,
+## #   m97.00000_FLUX <dbl>, ...
+```
+
+
+Now, we have a total of 646 observations, from which there are 46 families and 374 samples.
+
+I'm going to rename the columns to make the work easier and with this, I'll create a key of names for the volatiles.
+
+
+
+So far, the name key and the data are ready to start exploring.
+
+
+
+
+
 
 Some of the questions that arise from this dataset (which is only including volatiles and identifier, no sex is included):
  - What does the *Sample Name* stand for? And how many of each should we have. Some seem to be repeated numbers, but not all. 
  - What does the name of each volatile correspond to? What is the difference between **FLUX** and **(Conc)2**? Are they in any specific units?
+ 
+
+ 
