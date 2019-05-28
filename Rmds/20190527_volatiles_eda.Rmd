@@ -1,0 +1,53 @@
+---
+title: "Exploratory Data Analysis - moss volatiles"
+author:
+  - Leslie Kollar
+  - Javiera Rudolph
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+# modify the options so the Rmd file uses the project as a directory
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+
+
+# load libraries
+library(tidyverse)
+```
+
+
+# Load the data
+```{r}
+rawdata <- read.csv("rawdata/LK_master.csv")
+```
+
+Exclude samples from May 30, they are really off with the volatiles
+```{r}
+voc_dat <- rawdata[,c(1,2,4,6, 20:109)] %>% 
+  filter(Date.PTR != "30-May") %>% 
+  select(-Date.PTR) %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         ssex = Sample_Sex)
+
+oldnames <- names(voc_dat)
+names(voc_dat)[4:93] <- stringr::str_trunc(oldnames[4:93], width = 6, side = "right", ellipsis = "_") 
+
+```
+
+Creating data sets that hold a threshold, like the 10 or 20%
+
+```{r}
+# 1) change vars in vocs to 0 or 1
+# 2) calc % per voc, how many 0
+# 3) create new datasets w/ diff % thresholds
+
+
+
+
+```
+
