@@ -22,8 +22,10 @@ library(tidyverse)
 
 # Load the data
 ```{r}
-rawdata <- read.csv("rawdata/LK_master.csv")
+rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
 ```
+
+From the csv and the rawdata object, there's a lot of empty cells for volatiles. 
 
 Exclude samples from May 30, they are really off with the volatiles
 ```{r}
@@ -41,12 +43,15 @@ names(voc_dat)[4:93] <- stringr::str_trunc(oldnames[4:93], width = 6, side = "ri
 
 Creating data sets that hold a threshold, like the 10 or 20%
 
+m128 shows div by zero, so check the csv file.
+Also, all the volatiles are being read as factors... annoying.
 ```{r}
 # 1) change vars in vocs to 0 or 1
 # 2) calc % per voc, how many 0
 # 3) create new datasets w/ diff % thresholds
 
 
+ifel
 
 
 ```
