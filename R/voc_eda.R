@@ -64,14 +64,25 @@ voc_filter <- function(voc_data, threshold = NULL){
   
 }
 
-test <- voc_filter(voc_data, 0.4)
+test <- voc_filter(voc_data, 0.9)
 
 # The function works, now we need to keep only one sample, remove duplicates by taking only the max. 
 
-voc_filter(voc_data, 0.2) %>% 
+voc_filter(voc_data, 0.4) %>% 
   group_by(sampid) %>%
   mutate_if(is.numeric, max) %>% 
-  distinct() -> test
+  distinct() -> fortyprcnt_data
+
+library(vegan)
+
+dist <- vegdist(fortyprcnt_data[,4:52], method = "bray")
+NMDS1 <- metaMDS(dist, k=2, trymax = 100, trace = F)
+NMDS1
+stressplot(NMDS1)
+plot(NMDS1, type = "t")
 
 
+NMDS2 <- metaMDS(fortyprcnt_data[,4:52], trymax = 100)
+stressplot(NMDS2)
+plot(NMDS2, type = "t")
 
