@@ -65,9 +65,13 @@ voc_filter <- function(voc_data, threshold = NULL){
 }
 
 test <- voc_filter(voc_data, 0.4)
-  
-  
 
+# The function works, now we need to keep only one sample, remove duplicates by taking only the max. 
+
+voc_filter(voc_data, 0.2) %>% 
+  group_by(sampid) %>%
+  mutate_if(is.numeric, max) %>% 
+  distinct() -> test
 
 
 
