@@ -1,7 +1,9 @@
 
 #' load the necessary libraries
 library(tidyverse)
-
+library(vegan)
+library(plotly)
+library(corrplot)
 
 #' Read the csv file
 rawdata <- read.csv("rawdata/LK_master.csv")
@@ -67,22 +69,65 @@ voc_filter <- function(voc_data, threshold = NULL){
 test <- voc_filter(voc_data, 0.9)
 
 # The function works, now we need to keep only one sample, remove duplicates by taking only the max. 
-
-voc_filter(voc_data, 0.4) %>% 
+# Following Leslie's code,do the NMDS, which doesn't converge, but use sex instead of family
+voc_clean <- voc_filter(voc_data, 0.1) %>% 
   group_by(sampid) %>%
-  mutate_if(is.numeric, max) %>% 
-  distinct() -> fortyprcnt_data
-
-library(vegan)
-
-dist <- vegdist(fortyprcnt_data[,4:52], method = "bray")
-NMDS1 <- metaMDS(dist, k=2, trymax = 100, trace = F)
-NMDS1
-stressplot(NMDS1)
-plot(NMDS1, type = "t")
+  mutate_at(vars(starts_with("m")), max) %>% 
+  distinct() %>% 
+  mutate(ssex = str_to_lower(as.character(ssex)))
 
 
-NMDS2 <- metaMDS(fortyprcnt_data[,4:52], trymax = 100)
+nmd_output <- metaMDS(voc_clean[,4:78])
 stressplot(NMDS2)
 plot(NMDS2, type = "t")
 
+
+scores <- as.data.frame(scores(nmds_output)) %>% 
+  mutate(samplenum = rownames(.),
+         family = factor(voc_clean$famid),
+         sex = factor(voc_clean$ssex))
+
+
+vol.scores <- nmds_output$species %>% 
+  as.data.frame() %>% 
+  mutate(vol.ident = rownames(.))
+
+p=ggplot() +
+  theme_bw() +
+  #geom_text(data = vol.scores, aes(x = MDS1, y = MDS2, label = vol.ident)) +
+  geom_point(data = scores, aes(x = NMDS1, y = NMDS2, color = sex)) +
+  scale_color_viridis_d() +
+  coord_equal()
+
+ggplotly(p)
+
+scores %>% 
+  group_by(sex) %>%
+  nest() %>% 
+  mutate(
+    hull = map(data, ~ with(., chull(NMDS1, NMDS2))),
+    out = map2(data, hull, ~ .x[.y,,drop=FALSE])
+  ) %>% 
+  select(-data) %>% 
+  unnest() -> hullData
+
+
+ggplot() +
+  theme_bw() +
+  #geom_text(data = spp_scores, aes(x = MDS1, y = MDS2, label = species)) +
+  geom_point(data = scores, aes(x = NMDS1, y = NMDS2, color = sex)) +
+  #geom_text(data = scores, aes(x = NMDS1, y = NMDS2, label = site)) + 
+  geom_polygon(data = hullData, aes(x = NMDS1, y = NMDS2, fill = sex, group = sex), alpha = 0.2) +
+  coord_equal() +
+  scale_fill_viridis_d() +
+  scale_color_viridis_d()
+
+
+
+# This didn't work
+PCA <- vegan::rda(voc_clust[,4:78], scale = FALSE)
+
+# Correlation
+voc_corr <- cor(voc_clean[,4:78])
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
