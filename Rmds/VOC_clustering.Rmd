@@ -279,7 +279,7 @@ ggplot() +
 
 ## Correlations
 
-For all of them
+These side by side correlations are donw for all of them, then by sex. The first panel will show the correlations organized by mass, whereas the second panel will use a clustering algorithm.
 ```{r}
 # Correlation
 x <- voc_ordination_data
@@ -312,3 +312,10 @@ par(mfrow = c(1,2))
 corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
 corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
 ```
+
+We can tell there are some compounds that can be grouped.
+```{r}
+voc_corr <- cor(voc_ordination_data[,4:78])
+corrplot(voc_corr, method = "circle", order = "hclust", tl.col = "black", tl.cex = .5, addrect = 16)
+```
+
