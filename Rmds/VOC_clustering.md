@@ -16,7 +16,18 @@ With a quick check, we see that the numbers are very small and that
 different compounds have very different ranges as well.  
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
 
+We also know that there are a significant number of zeros in the data,
+and if we visualize it without the zeroes, it can give us some insight
+regarding the abundant compounds which we are actually interested in.
+
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+
+We might want to get a hint of what the data looks like for males and
+females and how these might differ by family.
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+
+![](VOC_clustering_files/figure-gfm/facetPlot-1.png)<!-- -->
 
 I am thinking that we can log transform the data, and add a really small
 value, a couple of orders of magnitude from the minimum value in the

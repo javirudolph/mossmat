@@ -5,7 +5,7 @@ output: github_document
 
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 12, fig.height = 8)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 14, fig.height = 6)
 
 ```
 
@@ -39,32 +39,60 @@ long_voc_data %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
+We also know that there are a significant number of zeros in the data, and if we visualize it without the zeroes, it can give us some insight regarding the abundant compounds which we are actually interested in.
 
-```{r dataVis}
-# gather the data
-# do a bloxplot for each compound in the x axis.
-# Would show very small values and a large number of zeroes.
-# Maybe just use the positive values, and show number of obs at the top. 
-# this from the seed dispersal paper.
-
+```{r}
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
 
 ```
 
-
+We might want to get a hint of what the data looks like for males and females and how these might differ by family.  
 
 ```{r}
 
 long_voc_data %>% 
   filter(conc > 0) %>% 
   mutate(famid = as.numeric(famid)) %>% 
-  #mutate_if(is.character, list(~factor(.))) %>% 
   ggplot(., aes(x = voc, y = conc, color = famid)) +
-  geom_point(alpha = 0.2) +
+  geom_point(alpha = 0.4) +
   scale_color_viridis_c() +
   facet_wrap(~ ssex) +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90))
 
 ```
+
+
+```{r facetPlot, fig.height=12}
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank())
+```
+
+With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf.
+
+
+
+```{r}
+long_voc_data %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+```
+
+
+
 
 
 I am thinking that we can log transform the data, and add a really small value, a couple of orders of magnitude from the minimum value in the data set. Once it is in a log scale we can shift the values so that they are not negative but are on the positive side of the spectrum.
