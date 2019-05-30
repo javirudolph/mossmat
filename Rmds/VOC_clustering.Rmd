@@ -5,7 +5,7 @@ output: github_document
 
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
-knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 12, fig.height = 8)
 
 ```
 
@@ -16,14 +16,29 @@ library(plotly)
 library(corrplot)
 ```
 
-
-## Data transformation
 The clean RDS data file should be available locally after you run the `master_cleanup.R` file.This will take the master csv data file and output the RDS we use here. The data we will be using has no duplicates and uses a 10% threshold. This threshold establishes the minimum number of samples that would show a given compound for that compound to be included in the analysis.
 
 ```{r dataload}
 # source("R/master_cleanup.R")
 voc_data <- readRDS("cleandata/voc_10.RDS")
+
+# this is to use ggplot
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
 ```
+
+## Data exploration
+We know we are working with very small numbers and this influences how we will manage the data and what sort of clustering we can do for it. With a quick check, we see that the numbers are very small and that different compounds have very different ranges as well.  
+```{r}
+long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
 
 ```{r dataVis}
 # gather the data
@@ -31,6 +46,23 @@ voc_data <- readRDS("cleandata/voc_10.RDS")
 # Would show very small values and a large number of zeroes.
 # Maybe just use the positive values, and show number of obs at the top. 
 # this from the seed dispersal paper.
+
+
+```
+
+
+
+```{r}
+
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  mutate(famid = as.numeric(famid)) %>% 
+  #mutate_if(is.character, list(~factor(.))) %>% 
+  ggplot(., aes(x = voc, y = conc, color = famid)) +
+  geom_point(alpha = 0.2) +
+  scale_color_viridis_c() +
+  facet_wrap(~ ssex) +
+  theme_bw()
 
 ```
 
