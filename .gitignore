@@ -44,4 +44,7 @@ rsconnect/
 *.html
 
 # Make the exception for the raw volatile csv
+
 !LK_master.csv
+.Rproj.user
+
