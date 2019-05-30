@@ -95,10 +95,31 @@ long_voc_data %>%
 
 With the information, we can clean the data again and make these outliers be equal to zero.
 ```{r}
+voc_data[voc_data < 10e-15] <- 0
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
 
+long_voc_data %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
 ```
 
 
+```{r fig.height=12}
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  scale_y_log10() +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank())
+```
+Ok, this is good! and now we have a better idea of the data and how we can work with it for any ordination type of analysis.
 I am thinking that we can log transform the data, and add a really small value, a couple of orders of magnitude from the minimum value in the data set. Once it is in a log scale we can shift the values so that they are not negative but are on the positive side of the spectrum. This is not taking the absolute value but shifting with a sum so that the biggest values correspond to the largest concentrations of the compounds and smaller values correspond to smaller concentrations. If we were to take the absolute value this concept would be inverse and less intuitive.
 
 

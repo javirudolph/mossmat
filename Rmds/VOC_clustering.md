@@ -39,6 +39,12 @@ in the range of
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
+With the information, we can clean the data again and make these
+outliers be equal to zero.
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
 I am thinking that we can log transform the data, and add a really small
 value, a couple of orders of magnitude from the minimum value in the
 data set. Once it is in a log scale we can shift the values so that they
