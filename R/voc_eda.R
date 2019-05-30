@@ -85,7 +85,7 @@ corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col =
 # 
 # PCA attempt
 voc_clean %>% 
-  filter(ssex == "m") %>% 
+  filter(ssex == "f") %>% 
   select(-famid, -ssex, -sampid) -> sub_voc
 
 sub_voc %>% 
@@ -95,7 +95,7 @@ sub_voc %>%
   mutate_all(., list( ~ ifelse(. == 0, 1, .))) %>% 
   min()
 
-pca_voc <- abs(log10(voc_clean[,4:78] + 1e-26))
+pca_voc <- abs(log10(voc_clean[,4:78] + 1e-30))
 PCA <- vegan::rda(pca_voc, scale = FALSE)
 PCA
 #plot(PCA)
