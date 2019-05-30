@@ -73,6 +73,7 @@ test <- voc_filter(voc_data, 0.9)
 voc_clean <- voc_filter(voc_data, 0.1) %>% 
   group_by(sampid) %>%
   mutate_at(vars(starts_with("m")), max) %>% 
+  ungroup () %>% 
   distinct() %>% 
   mutate(ssex = str_to_lower(as.character(ssex)))
 
@@ -124,10 +125,31 @@ ggplot() +
 
 
 
-# This didn't work
-PCA <- vegan::rda(voc_clust[,4:78], scale = FALSE)
-
 # Correlation
-voc_corr <- cor(voc_clean[,4:78])
+x <- voc_clean %>% 
+  filter(ssex == "m")
+voc_corr <- cor(x[4:78])
 corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
 corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
+
+
+# 
+# PCA attempt
+voc_clean %>% 
+  filter(ssex == "m") %>% 
+  select(-famid, -ssex, -sampid) -> sub_voc
+
+sub_voc %>% 
+  min()
+
+sub_voc %>% 
+  mutate_all(., list( ~ ifelse(. == 0, 1, .))) %>% 
+  min()
+
+pca_voc <- log10(sub_voc + 1e-13)
+PCA <- vegan::rda(pca_voc, scale = TRUE)
+PCA
+#plot(PCA)
+
+biplot(PCA)
+
