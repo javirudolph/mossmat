@@ -5,6 +5,7 @@ Volatile organic compounds clustering/ordination
   - [Data transformation](#data-transformation)
   - [Ordination](#ordination)
   - [NMDS](#nmds)
+  - [Correlations](#correlations)
 
 The clean RDS data file should be available locally after you run the
 `master_cleanup.R` file.This will take the master csv data file and
@@ -100,32 +101,43 @@ which still doesn’t show convergence.
 
     ## Wisconsin double standardization
     ## Run 0 stress 0.1117267 
-    ## Run 1 stress 0.1288331 
-    ## Run 2 stress 0.1237552 
-    ## Run 3 stress 0.126145 
-    ## Run 4 stress 0.1208796 
-    ## Run 5 stress 0.1277006 
-    ## Run 6 stress 0.1215112 
-    ## Run 7 stress 0.120879 
-    ## Run 8 stress 0.1254304 
-    ## Run 9 stress 0.1239232 
-    ## Run 10 stress 0.1267839 
-    ## Run 11 stress 0.1246888 
-    ## Run 12 stress 0.1187022 
-    ## Run 13 stress 0.1209325 
-    ## Run 14 stress 0.1199551 
-    ## Run 15 stress 0.1197298 
-    ## Run 16 stress 0.1223307 
-    ## Run 17 stress 0.1206512 
-    ## Run 18 stress 0.1296298 
-    ## Run 19 stress 0.1251391 
-    ## Run 20 stress 0.1233134 
+    ## Run 1 stress 0.1223089 
+    ## Run 2 stress 0.4184264 
+    ## Run 3 stress 0.1205834 
+    ## Run 4 stress 0.1182784 
+    ## Run 5 stress 0.1238578 
+    ## Run 6 stress 0.123495 
+    ## Run 7 stress 0.1250602 
+    ## Run 8 stress 0.1241651 
+    ## Run 9 stress 0.1252151 
+    ## Run 10 stress 0.1229182 
+    ## Run 11 stress 0.1257116 
+    ## Run 12 stress 0.1250563 
+    ## Run 13 stress 0.1185858 
+    ## Run 14 stress 0.4185372 
+    ## Run 15 stress 0.1228607 
+    ## Run 16 stress 0.1210912 
+    ## Run 17 stress 0.124908 
+    ## Run 18 stress 0.1198849 
+    ## Run 19 stress 0.1181746 
+    ## Run 20 stress 0.1279723 
     ## *** No convergence -- monoMDS stopping criteria:
-    ##      2: no. of iterations >= maxit
-    ##     18: stress ratio > sratmax
+    ##      3: no. of iterations >= maxit
+    ##     17: stress ratio > sratmax
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 The hulls by sex
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+## Correlations
+
+For all of them
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+For males
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
+For females
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->

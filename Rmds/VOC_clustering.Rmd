@@ -241,15 +241,13 @@ vol.scores <- voc_nmds$species %>%
   as.data.frame() %>% 
   mutate(vol.ident = rownames(.))
 
-p <- ggplot() +
+ggplot() +
   theme_bw() +
   #geom_text(data = vol.scores, aes(x = MDS1, y = MDS2, label = vol.ident)) +
   geom_point(data = scores, aes(x = NMDS1, y = NMDS2, color = family)) +
   scale_color_viridis_d() +
   #scale_color_viridis_c() +
   coord_equal()
-
-ggplotly(p)
 ```
 
 The hulls by sex
@@ -271,12 +269,46 @@ scores %>%
 ggplot() +
   theme_bw() +
   #geom_text(data = spp_scores, aes(x = MDS1, y = MDS2, label = species)) +
-  geom_point(data = scores, aes(x = NMDS1, y = NMDS2, color = sex)) +
   #geom_text(data = scores, aes(x = NMDS1, y = NMDS2, label = site)) + 
   geom_polygon(data = hullData, aes(x = NMDS1, y = NMDS2, fill = sex, group = sex), alpha = 0.2) +
+  geom_point(data = scores, aes(x = NMDS1, y = NMDS2, color = sex)) +
   coord_equal() +
   scale_fill_viridis_d() +
   scale_color_viridis_d()
 ```
 
+## Correlations
 
+For all of them
+```{r}
+# Correlation
+x <- voc_ordination_data
+voc_corr <- cor(x[4:78])
+par(mfrow = c(1,2))
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
+```
+
+
+For males
+```{r}
+# Correlation
+x <- voc_ordination_data %>% 
+  filter(ssex == "m")
+voc_corr <- cor(x[4:78])
+par(mfrow = c(1,2))
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
+```
+
+
+For females
+```{r}
+# Correlation
+x <- voc_ordination_data %>% 
+  filter(ssex == "f")
+voc_corr <- cor(x[4:78])
+par(mfrow = c(1,2))
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
+```
