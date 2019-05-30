@@ -136,7 +136,7 @@ corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col =
 # 
 # PCA attempt
 voc_clean %>% 
-  filter(ssex == "m") %>% 
+  filter(ssex == "f") %>% 
   select(-famid, -ssex, -sampid) -> sub_voc
 
 sub_voc %>% 
@@ -146,10 +146,20 @@ sub_voc %>%
   mutate_all(., list( ~ ifelse(. == 0, 1, .))) %>% 
   min()
 
-pca_voc <- log10(sub_voc + 1e-13)
+pca_voc <- abs(log10(sub_voc + 1e-26))
 PCA <- vegan::rda(pca_voc, scale = TRUE)
 PCA
 #plot(PCA)
 
 biplot(PCA)
 
+dat_cca <- cca(pca_voc)
+dat_cca
+plot(dat_cca, display = "species", scaling = 1)
+
+dat_dca <- decorana(pca_voc)
+dat_dca
+plot(dat_dca, display = "species")
+
+dat_nmds <- metaMDS(pca_voc)
+plot(dat_nmds)
