@@ -14,6 +14,7 @@ library(tidyverse)
 library(vegan)
 library(plotly)
 library(corrplot)
+library(ggpubr)
 ```
 
 The clean RDS data file should be available locally after you run the `master_cleanup.R` file.This will take the master csv data file and output the RDS we use here. The data we will be using has no duplicates and uses a 10% threshold. This threshold establishes the minimum number of samples that would show a given compound for that compound to be included in the analysis.
@@ -77,7 +78,7 @@ long_voc_data %>%
   theme(axis.text.x = element_blank())
 ```
 
-With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf. This actually makes it easy to see that there are some outliers that should probably just be considered a zero. It is pretty clear that most of the compounds we are interested in are in the range of 
+With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf. This actually makes it easy to see that there are some outliers that should probably just be considered a zero. It is pretty clear that most of the compounds we are interested in are in a range.
 
 
 
@@ -93,7 +94,7 @@ long_voc_data %>%
 
 
 
-With the information, we can clean the data again and make these outliers be equal to zero.
+With the information, we can clean the data again and remove these outliers.
 ```{r}
 voc_data[voc_data < 10e-15] <- 0
 long_voc_data <- voc_data %>% 
@@ -117,10 +118,47 @@ long_voc_data %>%
   geom_point(alpha = 0.5) +
   scale_y_log10() +
   facet_wrap(~famid, ncol = 6) +
-  theme(axis.text.x = element_blank())
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
 ```
 Ok, this is good! and now we have a better idea of the data and how we can work with it for any ordination type of analysis.
 I am thinking that we can log transform the data, and add a really small value, a couple of orders of magnitude from the minimum value in the data set. Once it is in a log scale we can shift the values so that they are not negative but are on the positive side of the spectrum. This is not taking the absolute value but shifting with a sum so that the biggest values correspond to the largest concentrations of the compounds and smaller values correspond to smaller concentrations. If we were to take the absolute value this concept would be inverse and less intuitive.
+
+```{r}
+long_voc_data %>% 
+  filter(voc == "m87.04") -> m87.04
+
+# Raw distribution
+m87.04 %>% 
+  ggplot() +
+  geom_histogram(aes(x = conc)) + 
+  labs(title = "Raw distribution") -> raw
+
+# log distribution, there are 3 zeroes that get removed
+m87.04 %>% 
+  mutate(conc = log10(conc)) %>% 
+  ggplot() +
+  geom_histogram(aes(x = conc)) + 
+  labs(title = "Log transformed - zero removed") -> logh
+
+# if we add the minimum value so we don't loose the zeroes
+head(sort(m87.04$conc))
+m87.04 %>% 
+  mutate(conc = log10(conc + 1e-11)) %>% 
+  ggplot() +
+  geom_histogram(aes(x = conc)) +
+  labs(title = "log plus smallest value") -> logz
+
+# if to the one we added the minimum we shift it to all values are positive
+m87.04 %>% 
+  mutate(conc = log10(conc + 1e-11) + 11) %>%  
+  ggplot() +
+  geom_histogram(aes(x = conc)) +
+  labs(title = "shifted log plus value") -> logzplus
+
+ggarrange(raw, logh, logz, logzplus, ncol = 2, nrow = 2)
+
+```
 
 
 

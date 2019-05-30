@@ -35,22 +35,29 @@ compare with the first figure. I have chosen not to include the zeroes
 here since log10(0) = -inf. This actually makes it easy to see that
 there are some outliers that should probably just be considered a zero.
 It is pretty clear that most of the compounds we are interested in are
-in the range of
+in a range.
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
-With the information, we can clean the data again and make these
-outliers be equal to zero.
+With the information, we can clean the data again and remove these
+outliers.
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-6-1.png)<!-- --> Ok,
+this is good\! and now we have a better idea of the data and how we can
+work with it for any ordination type of analysis. I am thinking that we
+can log transform the data, and add a really small value, a couple of
+orders of magnitude from the minimum value in the data set. Once it is
+in a log scale we can shift the values so that they are not negative but
+are on the positive side of the spectrum. This is not taking the
+absolute value but shifting with a sum so that the biggest values
+correspond to the largest concentrations of the compounds and smaller
+values correspond to smaller concentrations. If we were to take the
+absolute value this concept would be inverse and less
+    intuitive.
 
-I am thinking that we can log transform the data, and add a really small
-value, a couple of orders of magnitude from the minimum value in the
-data set. Once it is in a log scale we can shift the values so that they
-are not negative but are on the positive side of the spectrum. This is
-not taking the absolute value but shifting with a sum so that the
-biggest values correspond to the largest concentrations of the compounds
-and smaller values correspond to smaller concentrations. If we were to
-take the absolute value this concept would be inverse and less
-intuitive.
+    ## [1] 0.00000e+00 0.00000e+00 0.00000e+00 2.04956e-09 1.30857e-08 2.25496e-08
+
+    ## Warning: Removed 3 rows containing non-finite values (stat_bin).
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
