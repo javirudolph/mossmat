@@ -1,6 +1,11 @@
 Volatile organic compounds clustering/ordination
 ================
 
+  - [Data exploration](#data-exploration)
+  - [Data transformation](#data-transformation)
+  - [Ordination](#ordination)
+  - [NMDS](#nmds)
+
 The clean RDS data file should be available locally after you run the
 `master_cleanup.R` file.This will take the master csv data file and
 output the RDS we use here. The data we will be using has no duplicates
@@ -19,6 +24,8 @@ different compounds have very different ranges as well.
 We also know that there are a significant number of zeros in the data,
 and if we visualize it without the zeroes, it can give us some insight
 regarding the abundant compounds which we are actually interested in.
+However, when you compare these two figures, they don’t seem too
+different
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
@@ -28,6 +35,8 @@ females and how these might differ by family.
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 ![](VOC_clustering_files/figure-gfm/facetPlot-1.png)<!-- -->
+
+## Data transformation
 
 With these figures it is very clear that the compounds are at different
 scales, so we might want to log transform them and check the result, to
@@ -53,11 +62,70 @@ are on the positive side of the spectrum. This is not taking the
 absolute value but shifting with a sum so that the biggest values
 correspond to the largest concentrations of the compounds and smaller
 values correspond to smaller concentrations. If we were to take the
-absolute value this concept would be inverse and less
-    intuitive.
+absolute value this concept would be inverse and less intuitive. The
+following histograms are examples of these transformations using the
+data for compound
+    **m87.04**
 
     ## [1] 0.00000e+00 0.00000e+00 0.00000e+00 2.04956e-09 1.30857e-08 2.25496e-08
 
     ## Warning: Removed 3 rows containing non-finite values (stat_bin).
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+## Ordination
+
+We will start with a PCA, since the goal of that is to reduce the number
+of dimensions and see what compounds might be acting in a similar way.
+The hulls show something we were able to see before, and it’s that the
+males and females overlap on their volatile profiles.
+
+This is how the transformed data looks now.
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+We can try running a detrended correspondence analysis, but it shows
+pretty much a similar trend on how the volatiles show up together. It
+seems to have some influence with their mass, which is kind of
+intuitive.
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+## NMDS
+
+We can try an NMDS following the process Leslie had done in the past,
+which still doesn’t show convergence.
+
+    ## Wisconsin double standardization
+    ## Run 0 stress 0.1117267 
+    ## Run 1 stress 0.1288331 
+    ## Run 2 stress 0.1237552 
+    ## Run 3 stress 0.126145 
+    ## Run 4 stress 0.1208796 
+    ## Run 5 stress 0.1277006 
+    ## Run 6 stress 0.1215112 
+    ## Run 7 stress 0.120879 
+    ## Run 8 stress 0.1254304 
+    ## Run 9 stress 0.1239232 
+    ## Run 10 stress 0.1267839 
+    ## Run 11 stress 0.1246888 
+    ## Run 12 stress 0.1187022 
+    ## Run 13 stress 0.1209325 
+    ## Run 14 stress 0.1199551 
+    ## Run 15 stress 0.1197298 
+    ## Run 16 stress 0.1223307 
+    ## Run 17 stress 0.1206512 
+    ## Run 18 stress 0.1296298 
+    ## Run 19 stress 0.1251391 
+    ## Run 20 stress 0.1233134 
+    ## *** No convergence -- monoMDS stopping criteria:
+    ##      2: no. of iterations >= maxit
+    ##     18: stress ratio > sratmax
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+The hulls by sex
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->

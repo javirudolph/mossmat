@@ -1,6 +1,8 @@
 ---
 title: "Volatile organic compounds clustering/ordination"
-output: github_document
+output: 
+  github_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
@@ -21,7 +23,7 @@ The clean RDS data file should be available locally after you run the `master_cl
 
 ```{r dataload}
 # source("R/master_cleanup.R")
-voc_data <- readRDS("cleandata/voc_10.RDS")
+voc_data <- readRDS("cleandata/voc_clean10.RDS")
 
 # this is to use ggplot
 long_voc_data <- voc_data %>% 
@@ -40,7 +42,7 @@ long_voc_data %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-We also know that there are a significant number of zeros in the data, and if we visualize it without the zeroes, it can give us some insight regarding the abundant compounds which we are actually interested in.
+We also know that there are a significant number of zeros in the data, and if we visualize it without the zeroes, it can give us some insight regarding the abundant compounds which we are actually interested in. However, when you compare these two figures, they don't seem too different
 
 ```{r}
 long_voc_data %>% 
@@ -78,8 +80,9 @@ long_voc_data %>%
   theme(axis.text.x = element_blank())
 ```
 
-With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf. This actually makes it easy to see that there are some outliers that should probably just be considered a zero. It is pretty clear that most of the compounds we are interested in are in a range.
+## Data transformation
 
+With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf. This actually makes it easy to see that there are some outliers that should probably just be considered a zero. It is pretty clear that most of the compounds we are interested in are in a range.
 
 
 ```{r}
@@ -122,7 +125,7 @@ long_voc_data %>%
         axis.ticks.x = element_blank())
 ```
 Ok, this is good! and now we have a better idea of the data and how we can work with it for any ordination type of analysis.
-I am thinking that we can log transform the data, and add a really small value, a couple of orders of magnitude from the minimum value in the data set. Once it is in a log scale we can shift the values so that they are not negative but are on the positive side of the spectrum. This is not taking the absolute value but shifting with a sum so that the biggest values correspond to the largest concentrations of the compounds and smaller values correspond to smaller concentrations. If we were to take the absolute value this concept would be inverse and less intuitive.
+I am thinking that we can log transform the data, and add a really small value, a couple of orders of magnitude from the minimum value in the data set. Once it is in a log scale we can shift the values so that they are not negative but are on the positive side of the spectrum. This is not taking the absolute value but shifting with a sum so that the biggest values correspond to the largest concentrations of the compounds and smaller values correspond to smaller concentrations. If we were to take the absolute value this concept would be inverse and less intuitive. The following histograms are examples of these transformations using the data for compound **m87.04**
 
 ```{r}
 long_voc_data %>% 
@@ -163,14 +166,117 @@ ggarrange(raw, logh, logz, logzplus, ncol = 2, nrow = 2)
 
 
 
+## Ordination
+We will start with a PCA, since the goal of that is to reduce the number of dimensions and see what compounds might be acting in a similar way. The hulls show something we were able to see before, and it's that the males and females overlap on their volatile profiles.
 
 
+```{r}
+# Use the transformation of data
+voc_data %>%
+  select(-c(sampid, famid, ssex)) %>% 
+  mutate_all(., list( ~ ifelse(. == 0, 1, .))) %>% 
+  min() -> minvoc
+
+zeroes <- 10^(round(log10(minvoc)) - 1)
+
+voc_ordination_data <- voc_data %>% 
+  #select(-c(sampid, famid, ssex)) %>% 
+  mutate_at(vars(starts_with("m")), list( ~ log10(. + zeroes) - log10(zeroes)))
+
+```
+
+This is how the transformed data looks now.
+
+```{r fig.height=12}
+voc_ordination_data %>%
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc))) %>%
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+```
+
+```{r fig.height=7, fig.width=7}
+voc_pca <- rda(voc_ordination_data[,4:78])
+
+biplot(voc_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+ssex.colors <- levels(factor(voc_ordination_data$ssex))
+# add hulls
+ordihull(voc_pca, group = factor(voc_ordination_data$ssex),
+         col = c("blue","black"))
+legend("topright", 
+       col = c("blue", "black"),
+       lty = 1,
+       legend = ssex.colors)
+```
+
+We can try running a detrended correspondence analysis, but it shows pretty much a similar trend on how the volatiles show up together. It seems to have some influence with their mass, which is kind of intuitive.
+
+```{r fig.height=7, fig.width=7}
+dca_voc <- decorana(voc_ordination_data[,4:78])
+plot(dca_voc, display = "species")
+```
 
 
+## NMDS
+We can try an NMDS following the process Leslie had done in the past, which still doesn't show convergence.
+
+```{r}
+voc_nmds <- metaMDS(voc_ordination_data[,4:78])
+```
+
+```{r}
+scores <- as.data.frame(scores(voc_nmds)) %>% 
+  mutate(samplenum = rownames(.),
+         family = factor(voc_ordination_data$famid),
+         sex = factor(voc_ordination_data$ssex))
 
 
+vol.scores <- voc_nmds$species %>% 
+  as.data.frame() %>% 
+  mutate(vol.ident = rownames(.))
+
+p <- ggplot() +
+  theme_bw() +
+  #geom_text(data = vol.scores, aes(x = MDS1, y = MDS2, label = vol.ident)) +
+  geom_point(data = scores, aes(x = NMDS1, y = NMDS2, color = family)) +
+  scale_color_viridis_d() +
+  #scale_color_viridis_c() +
+  coord_equal()
+
+ggplotly(p)
+```
+
+The hulls by sex
 
 
+```{r}
 
+scores %>% 
+  group_by(sex) %>%
+  nest() %>% 
+  mutate(
+    hull = map(data, ~ with(., chull(NMDS1, NMDS2))),
+    out = map2(data, hull, ~ .x[.y,,drop=FALSE])
+  ) %>% 
+  select(-data) %>% 
+  unnest() -> hullData
+
+
+ggplot() +
+  theme_bw() +
+  #geom_text(data = spp_scores, aes(x = MDS1, y = MDS2, label = species)) +
+  geom_point(data = scores, aes(x = NMDS1, y = NMDS2, color = sex)) +
+  #geom_text(data = scores, aes(x = NMDS1, y = NMDS2, label = site)) + 
+  geom_polygon(data = hullData, aes(x = NMDS1, y = NMDS2, fill = sex, group = sex), alpha = 0.2) +
+  coord_equal() +
+  scale_fill_viridis_d() +
+  scale_color_viridis_d()
+```
 
 
