@@ -159,7 +159,15 @@ m87.04 %>%
   geom_histogram(aes(x = conc)) +
   labs(title = "shifted log plus value") -> logzplus
 
-ggarrange(raw, logh, logz, logzplus, ncol = 2, nrow = 2)
+# Take absolute value is like mirror, so all are positives
+m87.04 %>% 
+  mutate(conc = abs(log10(conc + 1e-11))) %>%  
+  ggplot() +
+  geom_histogram(aes(x = conc)) +
+  labs(title = "abs log plus value") -> logzabs
+
+
+ggarrange(raw, logh, logz, logzabs, ncol = 2, nrow = 2)
 
 ```
 
@@ -279,43 +287,95 @@ ggplot() +
 
 ## Correlations
 
-These side by side correlations are donw for all of them, then by sex. The first panel will show the correlations organized by mass, whereas the second panel will use a clustering algorithm.
+These side by side correlations are donw for all of them, then by sex. The first panel will show the correlations organized by mass, whereas the second panel will use a clustering algorithm. The first set of correlation matrices is using the transformed data.
 ```{r}
-# Correlation
-x <- voc_ordination_data
-voc_corr <- cor(x[4:78])
+# Correlation using the transformed data
+
+corr_data <- voc_ordination_data
+
+voc_corr <- cor(corr_data[4:78])
 par(mfrow = c(1,2))
-corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
-corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
-```
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "All - not clust")
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "All - hclust")
 
 
-For males
-```{r}
-# Correlation
-x <- voc_ordination_data %>% 
+x <- corr_data %>% 
   filter(ssex == "m")
 voc_corr <- cor(x[4:78])
 par(mfrow = c(1,2))
-corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
-corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
-```
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "Males - not clust")
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "Males - hclust")
 
-
-For females
-```{r}
-# Correlation
-x <- voc_ordination_data %>% 
+x <- corr_data %>% 
   filter(ssex == "f")
 voc_corr <- cor(x[4:78])
 par(mfrow = c(1,2))
-corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
-corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "Females - not clust")
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "Females - hclust")
+
 ```
 
-We can tell there are some compounds that can be grouped.
+This next set of correlation matrices is using the raw data, without any transformation
 ```{r}
-voc_corr <- cor(voc_ordination_data[,4:78])
-corrplot(voc_corr, method = "circle", order = "hclust", tl.col = "black", tl.cex = .5, addrect = 16)
+# Correlation using the transformed data
+
+corr_data <- voc_data
+
+voc_corr <- cor(corr_data[4:78])
+par(mfrow = c(1,2))
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "All - not clust")
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "All - hclust")
+
+
+x <- corr_data %>% 
+  filter(ssex == "m")
+voc_corr <- cor(x[4:78])
+par(mfrow = c(1,2))
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "Males - not clust")
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "Males - hclust")
+
+x <- corr_data %>% 
+  filter(ssex == "f")
+voc_corr <- cor(x[4:78])
+par(mfrow = c(1,2))
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "Females - not clust")
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3, title = "Females - hclust")
+
 ```
 
+
+We can tell there are some compounds that can be grouped, this compares the transformed data and the original raw data
+```{r}
+par(mfrow = c(1,2))
+voc_corr <- cor(voc_ordination_data[,4:78])
+corrplot(voc_corr, method = "circle", order = "hclust", tl.col = "black", tl.cex = .5, addrect = 10, title = "Raw all")
+
+voc_corr <- cor(voc_data[,4:78])
+corrplot(voc_corr, method = "circle", order = "hclust", tl.col = "black", tl.cex = .5, addrect = 16, title = "Transformed")
+
+
+
+```
+
+Comparing these two correlation matrices is equivalent to comparing these two datasets:
+
+
+```{r}
+
+voc_ordination_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc))) %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) -> logplot
+
+long_voc_data %>% 
+  #filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) -> rawplot
+
+ggarrange(logplot, rawplot, nrow = 2)
+```

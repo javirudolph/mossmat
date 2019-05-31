@@ -101,29 +101,28 @@ which still doesn’t show convergence.
 
     ## Wisconsin double standardization
     ## Run 0 stress 0.1117267 
-    ## Run 1 stress 0.1223089 
-    ## Run 2 stress 0.4184264 
-    ## Run 3 stress 0.1205834 
-    ## Run 4 stress 0.1182784 
-    ## Run 5 stress 0.1238578 
-    ## Run 6 stress 0.123495 
-    ## Run 7 stress 0.1250602 
-    ## Run 8 stress 0.1241651 
-    ## Run 9 stress 0.1252151 
-    ## Run 10 stress 0.1229182 
-    ## Run 11 stress 0.1257116 
-    ## Run 12 stress 0.1250563 
-    ## Run 13 stress 0.1185858 
-    ## Run 14 stress 0.4185372 
-    ## Run 15 stress 0.1228607 
-    ## Run 16 stress 0.1210912 
-    ## Run 17 stress 0.124908 
-    ## Run 18 stress 0.1198849 
-    ## Run 19 stress 0.1181746 
-    ## Run 20 stress 0.1279723 
+    ## Run 1 stress 0.1290079 
+    ## Run 2 stress 0.1291158 
+    ## Run 3 stress 0.1263628 
+    ## Run 4 stress 0.1134941 
+    ## Run 5 stress 0.1254052 
+    ## Run 6 stress 0.1198998 
+    ## Run 7 stress 0.1250086 
+    ## Run 8 stress 0.123941 
+    ## Run 9 stress 0.12374 
+    ## Run 10 stress 0.1240778 
+    ## Run 11 stress 0.1181585 
+    ## Run 12 stress 0.1172275 
+    ## Run 13 stress 0.1286771 
+    ## Run 14 stress 0.1260912 
+    ## Run 15 stress 0.1215423 
+    ## Run 16 stress 0.1275179 
+    ## Run 17 stress 0.1255875 
+    ## Run 18 stress 0.1158583 
+    ## Run 19 stress 0.1239223 
+    ## Run 20 stress 0.1253036 
     ## *** No convergence -- monoMDS stopping criteria:
-    ##      3: no. of iterations >= maxit
-    ##     17: stress ratio > sratmax
+    ##     20: stress ratio > sratmax
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
@@ -133,11 +132,21 @@ The hulls by sex
 
 ## Correlations
 
-For all of them
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+These side by side correlations are donw for all of them, then by sex.
+The first panel will show the correlations organized by mass, whereas
+the second panel will use a clustering algorithm. The first set of
+correlation matrices is using the transformed data.
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-2.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-3.png)<!-- -->
 
-For males
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+This next set of correlation matrices is using the raw data, without any
+transformation
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-16-2.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-16-3.png)<!-- -->
 
-For females
+We can tell there are some compounds that can be grouped, this compares
+the transformed data and the original raw data
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
+Comparing these two correlation matrices is equivalent to comparing
+these two datasets:
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->

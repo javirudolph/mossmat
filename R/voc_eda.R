@@ -113,3 +113,8 @@ plot(dat_dca, display = "species")
 dat_nmds <- metaMDS(pca_voc)
 plot(dat_nmds)
 stressplot(dat_nmds)
+
+
+par(mfrow = c(1,2))
+corrplot(voc_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3)
+corrplot(voc_corr, method = "circle", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, tl.cex = .3)
