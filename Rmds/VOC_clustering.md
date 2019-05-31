@@ -101,28 +101,29 @@ which still doesn’t show convergence.
 
     ## Wisconsin double standardization
     ## Run 0 stress 0.1117267 
-    ## Run 1 stress 0.1290079 
-    ## Run 2 stress 0.1291158 
-    ## Run 3 stress 0.1263628 
-    ## Run 4 stress 0.1134941 
-    ## Run 5 stress 0.1254052 
-    ## Run 6 stress 0.1198998 
-    ## Run 7 stress 0.1250086 
-    ## Run 8 stress 0.123941 
-    ## Run 9 stress 0.12374 
-    ## Run 10 stress 0.1240778 
-    ## Run 11 stress 0.1181585 
-    ## Run 12 stress 0.1172275 
-    ## Run 13 stress 0.1286771 
-    ## Run 14 stress 0.1260912 
-    ## Run 15 stress 0.1215423 
-    ## Run 16 stress 0.1275179 
-    ## Run 17 stress 0.1255875 
-    ## Run 18 stress 0.1158583 
-    ## Run 19 stress 0.1239223 
-    ## Run 20 stress 0.1253036 
+    ## Run 1 stress 0.1263973 
+    ## Run 2 stress 0.1282973 
+    ## Run 3 stress 0.1289812 
+    ## Run 4 stress 0.1250149 
+    ## Run 5 stress 0.1222848 
+    ## Run 6 stress 0.1231389 
+    ## Run 7 stress 0.123895 
+    ## Run 8 stress 0.1190794 
+    ## Run 9 stress 0.1230524 
+    ## Run 10 stress 0.1213023 
+    ## Run 11 stress 0.1214619 
+    ## Run 12 stress 0.1267318 
+    ## Run 13 stress 0.1255876 
+    ## Run 14 stress 0.1281756 
+    ## Run 15 stress 0.124551 
+    ## Run 16 stress 0.1281346 
+    ## Run 17 stress 0.1193285 
+    ## Run 18 stress 0.1166693 
+    ## Run 19 stress 0.121207 
+    ## Run 20 stress 0.1188776 
     ## *** No convergence -- monoMDS stopping criteria:
-    ##     20: stress ratio > sratmax
+    ##      2: no. of iterations >= maxit
+    ##     18: stress ratio > sratmax
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
@@ -150,3 +151,37 @@ Comparing these two correlation matrices is equivalent to comparing
 these two datasets:
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+
+Enough of visualizing things. So now let’s get some clustering going so
+we can determine what groups can go together. A question with this is
+the effect of a transformation on the data and the clustering. And with
+that, also considering whether we want to take a weighted average of the
+raw data or the transformed data for each cluster. I would suggest
+taking the weighted average of the raw data, and with this is probably
+following the cluster analysis on raw data. The reasoning behind this is
+that if we take a weighted average we would be going around the issue of
+having zeroes. They would just get mixed into the averaging process. On
+the other hand, if some clusters have only 2 or 3 compounds, a zero
+would have a big effect on the output, but then again, that’s why we
+would be doing weighted averages.
+
+After giving it a little more thought, maybe we want to consider the
+transformed data instead. If you focus on the cluster from the
+visualization, it seems like the big cluster from the raw data might
+just be those compounds that have really small concentrations. So then,
+these clusters are really just based on the concentrations, so obviously
+the ones that have super low concentrations might group together. By
+transforming the data is like we have all the compounds on a similar
+scale and we can actually compare them to each other and have
+correlations that make sense on a unified scale.
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+
+It seems like that is clustering the samples, not the volatiles. So
+maybe the focus is with correlation matrix and then calculate the
+distance
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+
+Now, I need to use the clusters given in the dendrogram to group the
+volatiles and calculate weighted averages for each sample.
