@@ -9,7 +9,6 @@ library(tidyverse)
 # Read the raw data file
 rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
 
-
 # Some  changes done to the raw file
 # - Keep only the trait data
 # - Change variable names to simpler names
@@ -30,6 +29,8 @@ trait_raw <- rawdata[,1:19] %>%
   arrange(sampid, .by_group = TRUE) %>% 
   ungroup
 
+# Fix a data entry error:
+trait_raw$Avg_21_days[which(trait_raw$Avg_21_days == 33)] <- 0.33
 
 # How many families here?
 length(unique(trait_raw$famid))
@@ -56,27 +57,54 @@ trait_raw %>%
 # Not sure what to do here and which ones to keep
 
 
-# Tasks
-# - Remove duplicates and scale data
-
-# Problem with the Leaf data, since the values are different for two clones. Should they be averaged? Or is this an error?
 
 
-# Will only focus on the other traits for now.
+# Growth and Development traits -------------------------------------------
+
 
 trait_raw[,c(2, 10:16)] %>% 
   drop_na() %>% 
   distinct() -> gro_dev_data
 
-dup_samples <- gro_dev_data[c(which(gro_dev_data$sampid %>% duplicated() == TRUE)),]$sampid
 
-gro_dev_data %>% 
-  filter(sampid %in% dup_samples) %>% 
-  View()
-# These are different in their Day21 measurement... 
 
 
 # Can't scale anything yet until we fix the Leaf data, and the incongruence in the other samples.
+
+
+
+
+
+
+
+# Reproduction variable ---------------------------------------------------
+
+trait_raw %>% 
+  select(sampid, ssex, Avg_Male_Buds.Stem) %>% 
+  filter(ssex == "m") %>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(av = mean(Avg_Male_Buds.Stem)) %>% 
+  mutate(reprovar = scale(av)) %>% 
+  select(sampid, reprovar) -> male_reprovar
+
+trait_raw %>% 
+  select(sampid, ssex, Avg_Arch) %>% 
+  filter(ssex == "f") %>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(av = mean(Avg_Arch)) %>% 
+  mutate(reprovar = scale(av)) %>% 
+  select(sampid, reprovar) -> fem_reprovar
+
+
+trait_identifiers %>% 
+  left_join(rbind(male_reprovar, fem_reprovar)) %>% 
+  left_join(gro_dev_data) -> joined_traits
+
+
+joined_traits[c(which(duplicated(joined_traits$sampid) == TRUE)),] %>% 
+  View()
 
 
 
