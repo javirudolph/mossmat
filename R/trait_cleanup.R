@@ -76,11 +76,7 @@ gro_dev_data %>%
 # These are different in their Day21 measurement... 
 
 
-mutate_if(is.numeric, scale) %>% 
-  set_names(c("sampid", "area_wk3", "perim_wk3", "circ_wk3", "perim_rate", "area_rate", "days21", "days_gam")) -> gro_dev_data
-
-gro_dev_data %>% 
-  gather(., key = "trait", value = "value", -sampid)
+# Can't scale anything yet until we fix the Leaf data, and the incongruence in the other samples.
 
 
 
