@@ -89,12 +89,20 @@ trait_raw <- rawdata[,1:19] %>%
   arrange(sampid, .by_group = TRUE) %>% 
   ungroup
 
+trait_identifiers <- trait_raw %>% 
+  select(famid, sampid, ssex) %>% 
+  distinct()
 
 # Tasks
 # - Remove duplicates and scale data
 
-trait_raw[,c(2, 10:19)] %>% 
-  distinct()
-  mutate_if(is.numeric, scale)
+trait_raw[,c(2, 10:16)] %>% 
+  distinct() %>% 
+  mutate_if(is.numeric, scale) %>% 
+  set_names(c("sampid", "area_wk3", "perim_wk3", "circ_wk3", "perim_rate", "area_rate", "days21", "days_gam")) -> gro_dev_data
+
+gro_dev_data %>% 
+  gather(., key = "trait", value = "value", -sampid)
+
   
 
