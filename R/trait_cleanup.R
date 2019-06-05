@@ -30,7 +30,13 @@ trait_raw <- rawdata[,1:19] %>%
   ungroup
 
 # Fix a data entry error:
+# Check Github issue #5
 trait_raw$Avg_21_days[which(trait_raw$Avg_21_days == 33)] <- 0.33
+
+# Fix sex data entry error
+# Check Github issue #5
+trait_raw[which(trait_raw$sampid == "P_18_1_6_B"),]$ssex <- "m"
+trait_raw <- trait_raw[-which(trait_raw$sampid == "P_6_6_20"),]
 
 # How many families here?
 length(unique(trait_raw$famid))
@@ -43,21 +49,6 @@ trait_identifiers <- trait_raw %>%
   select(famid, sampid, ssex) %>% 
   distinct()
 
-# These numbers should be the same but aren't
-# There must be a duplicated value somewhere
-which(trait_identifiers$sampid %>% duplicated() == TRUE)
-
-trait_identifiers[c(109, 110, 308, 309),]
-
-# Ok, big issue here since there is a missmatch in the ssex...
-# We can check with the raw data
-trait_raw %>% 
-  filter(sampid %in%  c("P_18_1_6_B", "P_6_6_20")) %>% 
-  View()
-# Not sure what to do here and which ones to keep
-
-
-
 
 # Growth and Development traits -------------------------------------------
 
@@ -65,17 +56,6 @@ trait_raw %>%
 trait_raw[,c(2, 10:16)] %>% 
   drop_na() %>% 
   distinct() -> gro_dev_data
-
-
-
-
-# Can't scale anything yet until we fix the Leaf data, and the incongruence in the other samples.
-
-
-
-
-
-
 
 # Reproduction variable ---------------------------------------------------
 
