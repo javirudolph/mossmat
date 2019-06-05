@@ -59,4 +59,22 @@ voc_data %>%
   mutate(ssex = str_to_lower(as.character(ssex))) -> voc_clean
 
 # Clean data with the 10% threshold, only one measurement of vocs per individual (no duplicates)
-saveRDS(voc_clean, "cleandata/voc_clean10.RDS")
+#saveRDS(voc_clean, "cleandata/voc_clean10.RDS")
+
+
+
+# TRAIT DATA --------------------------------------------------------------
+
+# Read the raw data file
+rawdata <- read.csv("rawdata/LK_master.csv")
+
+trait_raw <- rawdata[,1:19] %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         ssex = Sample_Sex) %>% 
+  drop_na(famid) %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", "")) %>% 
+  group_by(famid) %>% 
+  arrange(sampid, .by_group = TRUE) %>% 
+  ungroup
+
