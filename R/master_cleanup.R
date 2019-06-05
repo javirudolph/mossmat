@@ -66,15 +66,35 @@ voc_data %>%
 # TRAIT DATA --------------------------------------------------------------
 
 # Read the raw data file
-rawdata <- read.csv("rawdata/LK_master.csv")
+rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
+
+
+# Some  changes done to the raw file
+# - Keep only the trait data
+# - Change variable names to simpler names
+# - Remove empty rows at the end
+# - Fix names for Sample IDs, some have parentheses
+# - Change sex to lower case only
+# - Excel formula errors are just NAs
 
 trait_raw <- rawdata[,1:19] %>% 
   rename(famid = `Fam..`,
          sampid = Sample.Name,
          ssex = Sample_Sex) %>% 
   drop_na(famid) %>% 
-  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", "")) %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         ssex = str_to_lower(as.character(ssex))) %>% 
+  mutate_at(vars(starts_with("Leaf")), as.numeric) %>% 
   group_by(famid) %>% 
   arrange(sampid, .by_group = TRUE) %>% 
   ungroup
+
+
+# Tasks
+# - Remove duplicates and scale data
+
+trait_raw[,c(2, 10:19)] %>% 
+  distinct()
+  mutate_if(is.numeric, scale)
+  
 
