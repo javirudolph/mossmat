@@ -59,10 +59,22 @@ trait_raw %>%
 # Tasks
 # - Remove duplicates and scale data
 
+# Problem with the Leaf data, since the values are different for two clones. Should they be averaged? Or is this an error?
+
+
+# Will only focus on the other traits for now.
+
 trait_raw[,c(2, 10:16)] %>% 
+  drop_na() %>% 
   distinct() -> gro_dev_data
 
-which(gro_dev_data$sampid %>% duplicated() == TRUE)
+dup_samples <- gro_dev_data[c(which(gro_dev_data$sampid %>% duplicated() == TRUE)),]$sampid
+
+gro_dev_data %>% 
+  filter(sampid %in% dup_samples) %>% 
+  View()
+# These are different in their Day21 measurement... 
+
 
 mutate_if(is.numeric, scale) %>% 
   set_names(c("sampid", "area_wk3", "perim_wk3", "circ_wk3", "perim_rate", "area_rate", "days21", "days_gam")) -> gro_dev_data
