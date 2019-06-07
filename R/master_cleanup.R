@@ -65,9 +65,13 @@ voc_data %>%
 
 # TRAIT DATA --------------------------------------------------------------
 
+
+# There are too many things to consider:
+
+library(tidyverse)
+
 # Read the raw data file
 rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
-
 
 # Some  changes done to the raw file
 # - Keep only the trait data
@@ -89,23 +93,73 @@ trait_raw <- rawdata[,1:19] %>%
   arrange(sampid, .by_group = TRUE) %>% 
   ungroup
 
+# Fix a data entry error:
+# Check Github issue #5
+trait_raw$Avg_21_days[which(trait_raw$Avg_21_days == 33)] <- 0.33
+
+# Fix sex data entry error
+# Check Github issue #5
+trait_raw[which(trait_raw$sampid == "P_18_1_6_B"),]$ssex <- "m"
+trait_raw <- trait_raw[-which(trait_raw$sampid == "P_6_6_20"),]
+
+# How many families here?
+length(unique(trait_raw$famid))
+
+# How many individuals?
+length(unique(trait_raw$sampid))
+
+# These are the identifiers 
 trait_identifiers <- trait_raw %>% 
   select(famid, sampid, ssex) %>% 
   distinct()
 
-# Tasks
-# - Remove duplicates and scale data
+
+# Leaf data averaging -----------------------------------------------------
+
+trait_raw[,c(2, 17:19),] %>% 
+  group_by(sampid) %>% 
+  summarise_at(vars(starts_with("Leaf")), mean) -> leaf_data
+
+
+# Growth and Development traits -------------------------------------------
 
 trait_raw[,c(2, 10:16)] %>% 
-  distinct() -> gro_dev_data
+  drop_na() %>% 
+  distinct() %>% 
+  mutate_if(is.numeric, scale)-> gro_dev_data
 
-which(gro_dev_data$sampid %>% duplicated() == TRUE)
+# Reproduction variable ---------------------------------------------------
 
-  mutate_if(is.numeric, scale) %>% 
-  set_names(c("sampid", "area_wk3", "perim_wk3", "circ_wk3", "perim_rate", "area_rate", "days21", "days_gam")) -> gro_dev_data
+trait_raw %>% 
+  filter(ssex == "m") %>% 
+  select(sampid, ssex, Avg_Male_Buds.Stem) %>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(av = mean(Avg_Male_Buds.Stem)) %>% 
+  mutate(reprovar = scale(av)) %>% 
+  select(sampid, reprovar) -> male_reprovar
 
-gro_dev_data %>% 
-  gather(., key = "trait", value = "value", -sampid)
+trait_raw %>% 
+  select(sampid, ssex, Avg_Arch) %>% 
+  filter(ssex == "f") %>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(av = mean(Avg_Arch)) %>% 
+  mutate(reprovar = scale(av)) %>% 
+  select(sampid, reprovar) -> fem_reprovar
 
-  
 
+reprovar <- bind_rows(male_reprovar, fem_reprovar)
+
+
+# Join trait data ---------------------------------------------------------
+
+trait_identifiers %>% 
+  full_join(., reprovar) %>% 
+  full_join(., gro_dev_data) %>%
+  full_join(., leaf_data) %>% 
+  set_names(c("famid", "sampid", "ssex", "repro", "area_wk3",
+              "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
+              "days21", "days_gam", "lf_length", "lf_area", "lf_perim")) -> joined_traits
+
+saveRDS(joined_traits, "cleandata/traits_clean.RDS")
