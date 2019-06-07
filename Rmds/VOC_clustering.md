@@ -2,10 +2,12 @@ Volatile organic compounds clustering/ordination
 ================
 
   - [Data exploration](#data-exploration)
+  - [Log data](#log-data)
   - [Data transformation](#data-transformation)
-  - [Ordination](#ordination)
-  - [NMDS](#nmds)
-  - [Correlations](#correlations)
+      - [Ordination](#ordination)
+      - [NMDS](#nmds)
+      - [Correlations](#correlations)
+  - [Clustering](#clustering)
 
 The clean RDS data file should be available locally after you run the
 `master_cleanup.R` file.This will take the master csv data file and
@@ -36,15 +38,9 @@ differences between families might be a thing.
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
-<details>
+![](VOC_clustering_files/figure-gfm/facetPlot-1.png)<!-- -->
 
-<summary> <i> Facet Plots </i>
-
-![](VOC_clustering_files/figure-gfm/facetPlot-1.png)<!-- --> </summary>
-
-</details>
-
-## Data transformation
+## Log data
 
 With these figures it is very clear that the compounds are at different
 scales, so we might want to log transform them and check the result, to
@@ -62,15 +58,18 @@ outliers.
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-6-1.png)<!-- --> Ok,
 this is good\! and now we have a better idea of the data and how we can
-work with it for any ordination type of analysis. I am thinking that we
-can log transform the data, and add a really small value, a couple of
-orders of magnitude from the minimum value in the data set. Once it is
-in a log scale we can shift the values so that they are not negative but
-are on the positive side of the spectrum. This is not taking the
-absolute value but shifting with a sum so that the biggest values
-correspond to the largest concentrations of the compounds and smaller
-values correspond to smaller concentrations. If we were to take the
-absolute value this concept would be inverse and less intuitive. The
+work with it for any ordination type of analysis.
+
+# Data transformation
+
+I am thinking that we can log transform the data, and add a really small
+value, probably set to the detection threshold of the instrument. Once
+it is in a log scale we can shift the values so that they are not
+negative but are on the positive side of the spectrum. This is not
+taking the absolute value but shifting with a sum so that the biggest
+values correspond to the largest concentrations of the compounds and
+smaller values correspond to smaller concentrations. If we were to take
+the absolute value this concept would be inverse and less intuitive. The
 following histograms are examples of these transformations using the
 data for compound
     **m87.04**
@@ -79,7 +78,22 @@ data for compound
 
     ## Warning: Removed 3 rows containing non-finite values (stat_bin).
 
+    ## Warning: Removed 2 rows containing missing values (geom_bar).
+    
+    ## Warning: Removed 2 rows containing missing values (geom_bar).
+    
+    ## Warning: Removed 2 rows containing missing values (geom_bar).
+    
+    ## Warning: Removed 2 rows containing missing values (geom_bar).
+
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+This is how the transformed data looks now. Zeroes really screw
+everything up. I’m wondering if we need to think of using rank-based
+estimators for the correlations, this way the zeros wouldn’t affect it
+so much. We might look into Spearman correlation or Kendall’s tau
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ## Ordination
 
@@ -88,107 +102,71 @@ of dimensions and see what compounds might be acting in a similar way.
 The hulls show something we were able to see before, and it’s that the
 males and females overlap on their volatile profiles.
 
-This is how the transformed data looks now.
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+We can try running a detrended correspondence analysis, which seems to
+show a bit more separation between compounds and perhaps some sort of
+grouping.
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
-
-We can try running a detrended correspondence analysis, but it shows
-pretty much a similar trend on how the volatiles show up together. It
-seems to have some influence with their mass, which is kind of
-intuitive.
-
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 ## NMDS
 
 We can try an NMDS following the process Leslie had done in the past,
-which still doesn’t show convergence.
+which still doesn’t show convergence. However, we can see that again,
+that the sexes very much overlap. If we do this by family they overlap
+as well, it seems like the zeroes really drive this dynamic. Perhaps we
+will have more luck with the correlations.
 
-    ## Wisconsin double standardization
-    ## Run 0 stress 0.1115093 
-    ## Run 1 stress 0.1196349 
-    ## Run 2 stress 0.1198012 
-    ## Run 3 stress 0.1267598 
-    ## Run 4 stress 0.1186576 
-    ## Run 5 stress 0.1216793 
-    ## Run 6 stress 0.1256203 
-    ## Run 7 stress 0.1234117 
-    ## Run 8 stress 0.1192148 
-    ## Run 9 stress 0.1177543 
-    ## Run 10 stress 0.1289244 
-    ## Run 11 stress 0.1271547 
-    ## Run 12 stress 0.12603 
-    ## Run 13 stress 0.1194855 
-    ## Run 14 stress 0.1250388 
-    ## Run 15 stress 0.1259852 
-    ## Run 16 stress 0.1200902 
-    ## Run 17 stress 0.1279017 
-    ## Run 18 stress 0.1201084 
-    ## Run 19 stress 0.1267098 
-    ## Run 20 stress 0.1198467 
+    ## Run 0 stress 0.1517006 
+    ## Run 1 stress 0.1622404 
+    ## Run 2 stress 0.1605346 
+    ## Run 3 stress 0.1699362 
+    ## Run 4 stress 0.1592215 
+    ## Run 5 stress 0.1732302 
+    ## Run 6 stress 0.1626931 
+    ## Run 7 stress 0.1579694 
+    ## Run 8 stress 0.1600435 
+    ## Run 9 stress 0.1687295 
+    ## Run 10 stress 0.161576 
+    ## Run 11 stress 0.1651905 
+    ## Run 12 stress 0.1704195 
+    ## Run 13 stress 0.1553007 
+    ## Run 14 stress 0.1648408 
+    ## Run 15 stress 0.1583015 
+    ## Run 16 stress 0.1685205 
+    ## Run 17 stress 0.165166 
+    ## Run 18 stress 0.1637983 
+    ## Run 19 stress 0.1619776 
+    ## Run 20 stress 0.1729361 
     ## *** No convergence -- monoMDS stopping criteria:
     ##      1: no. of iterations >= maxit
     ##     19: stress ratio > sratmax
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
-
-The hulls by sex
-
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 ## Correlations
 
-These side by side correlations are donw for all of them, then by sex.
-The first panel will show the correlations organized by mass, whereas
-the second panel will use a clustering algorithm. The first set of
-correlation matrices is using the transformed data.
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-2.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-3.png)<!-- -->
+These correlation matrices are using all of the data, not separated by
+sexes. We can see that using the rank-based correlation, the values are
+not affected by the transformation. These correlation matrices are
+clustered by the correlation coefficients. Based on this, I would rather
+use a Spearman correlation on the raw data to determine the clustering
+groups. Based on those clustering groups we can combine them and create
+a new data frame with the raw data that we can later transform using the
+same log-shift tranformation.
 
-This next set of correlation matrices is using the raw data, without any
-transformation
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-16-2.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-16-3.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
-We can tell there are some compounds that can be grouped, this compares
-the transformed data and the original raw data
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
-
-Comparing these two correlation matrices is equivalent to comparing
-these two datasets:
-
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+# Clustering
 
 Enough of visualizing things. So now let’s get some clustering going so
 we can determine what groups can go together. A question with this is
 the effect of a transformation on the data and the clustering. And with
 that, also considering whether we want to take a weighted average of the
-raw data or the transformed data for each cluster. I would suggest
-taking the weighted average of the raw data, and with this is probably
-following the cluster analysis on raw data. The reasoning behind this is
-that if we take a weighted average we would be going around the issue of
-having zeroes. They would just get mixed into the averaging process. On
-the other hand, if some clusters have only 2 or 3 compounds, a zero
-would have a big effect on the output, but then again, that’s why we
-would be doing weighted averages.
+raw data or the transformed data for each cluster.
 
-After giving it a little more thought, maybe we want to consider the
-transformed data instead. If you focus on the cluster from the
-visualization, it seems like the big cluster from the raw data might
-just be those compounds that have really small concentrations. So then,
-these clusters are really just based on the concentrations, so obviously
-the ones that have super low concentrations might group together. By
-transforming the data is like we have all the compounds on a similar
-scale and we can actually compare them to each other and have
-correlations that make sense on a unified scale.
+We could compare the clusters by the spearman vs pearson correlation
+coefficients.
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
-
-It seems like that is clustering the samples, not the volatiles. So
-maybe the focus is with correlation matrix and then calculate the
-distance
-
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
-
-Now, I need to use the clusters given in the dendrogram to group the
-volatiles and calculate weighted averages for each sample.
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->

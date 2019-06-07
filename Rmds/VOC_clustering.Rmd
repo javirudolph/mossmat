@@ -88,7 +88,7 @@ long_voc_data %>%
 ```
 
 
-## Data transformation
+## Log data
 
 With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf. This actually makes it easy to see that there are some outliers that should probably just be considered a zero. It is pretty clear that most of the compounds we are interested in are in a range.
 
@@ -299,7 +299,7 @@ legend("topright",
 ```
 
 
-We can try running a detrended correspondence analysis, but it shows pretty much a similar trend on how the volatiles show up together. It seems to have some influence with their mass, which is kind of intuitive.
+We can try running a detrended correspondence analysis, which seems to show a bit more separation between compounds and perhaps some sort of grouping.
 
 ```{r fig.height=7, fig.width=12}
 dca_voc <- decorana(voc_log_data[,4:78])
@@ -397,53 +397,74 @@ for(i in 1:4){
 
 ```
 
-The following comparison is for clusters between males and females.
-
-
-
-
-Enough of visualizing things. So now let's get some clustering going so we can determine what groups can go together. A question with this is the effect of a transformation on the data and the clustering. And with that, also considering whether we want to take a weighted average of the raw data or the transformed data for each cluster. I would suggest taking the weighted average of the raw data, and with this is probably following the cluster analysis on raw data. The reasoning behind this is that if we take a weighted average we would be going around the issue of having zeroes. They would just get mixed into the averaging process. On the other hand, if some clusters have only 2 or 3 compounds, a zero would have a big effect on the output, but then again, that's why we would be doing weighted averages.
-
-After giving it a little more thought, maybe we want to consider the transformed data instead. If you focus on the cluster from the visualization, it seems like the big cluster from the raw data might just be those compounds that have really small concentrations. So then, these clusters are really just based on the concentrations, so obviously the ones that have super low concentrations might group together. By transforming the data is like we have all the compounds on a similar scale and we can actually compare them to each other and have correlations that make sense on a unified scale.
-
-```{r}
-voc_dist <- dist(voc_ordination_data[,4:78], method = "euclidean")
-clust_fit <- hclust(voc_dist, method = "ward")
-plot(clust_fit)
-
-clust_groups <- cutree(clust_fit, k=2)
-rect.hclust(clust_fit, k = 2, border = "red")
-
-
-voc_ordination_data$cluster <- clust_groups
-
-# table(voc_ordination_data$ssex, voc_ordination_data$cluster)
-```
-
-
-
-It seems like that is clustering the samples, not the volatiles. So maybe the focus is with correlation matrix and then calculate the distance
 
 
 ```{r}
-# For the rawdata
-# all_corr <- cor(voc_data[,4:78])
+# The following comparison is for clusters between males and females. Based on the previous figures, the Spearman correlation between raw and transformed data is basically the same, so to get the most info, I'll use the raw data and both types of correlations to compare males and females.
+voc_data %>% 
+  filter(ssex == "m") %>% 
+  select(-c(sampid, famid, ssex)) -> maledata
 
-# Or the transformed data
-all_corr <- cor(voc_ordination_data[,4:78])
+voc_data %>% 
+  filter(ssex == "f") %>% 
+  select(-c(sampid, famid, ssex)) -> femdata
 
-all_dis <- dist(all_corr)
-all_clust <- hclust(all_dis)
-plot(all_clust)
-rect.hclust(all_clust, k = 10)
+pears_fem <- cor(femdata)
+pears_male <- cor(maledata)
+spear_fem <- cor(femdata, method = "spearman")
+spear_male <- cor(maledata, method = "spearman")
+
+pears_fem_log <- cor(voc_log_data %>% 
+  filter(ssex == "f") %>% 
+  select(-c(sampid, famid, ssex)))
+
+pears_male_log <- cor(voc_log_data %>% 
+  filter(ssex == "m") %>% 
+  select(-c(sampid, famid, ssex)))
 
 
-voc_groups <- cbind(cutree(all_clust, k = 10), rownames(all_corr))
+ssex_cors <- list(spear_fem = spear_fem, spear_male = spear_male,
+                  pears_fem = pears_fem, pears_male = pears_male,
+                  pears_fem_log = pears_fem_log, pears_male_log = pears_male_log)
+
+```
+
+```{r fig.width=12, fig.height=18, eval = FALSE}
+par(mfrow = c(3,2))
+for(i in 1:6){
+  title <- names(ssex_cors)[i]
+  
+  corrplot(ssex_cors[[i]], main = title, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, mar=c(0,0,2,0))
+  
+  #corrplot(all_cors[[i]], main = title, method = "circle", tl.col = "black", tl.srt = 45, tl.cex = .3, order = "hclust", addrect = 10, mar=c(0,0,2,0))
+  
+}
 
 ```
 
 
-Now, I need to use the clusters given in the dendrogram to group the volatiles and calculate weighted averages for each sample.
+# Clustering
+
+Enough of visualizing things. So now let's get some clustering going so we can determine what groups can go together. A question with this is the effect of a transformation on the data and the clustering. And with that, also considering whether we want to take a weighted average of the raw data or the transformed data for each cluster. 
+
+We could compare the clusters by the spearman vs pearson correlation coefficients. 
+
+```{r fig.width=14, fig.height=14}
+par(mfrow=c(3,1))
+# Spearman with raw data
+spear_raw_dist <- hclust(dist(spear_raw))
+plot(spear_raw_dist, main = "Spearman raw data", xlab = "")
+
+pears_raw_dist <- hclust(dist(pears_raw))
+plot(pears_raw_dist, main = "Pearson raw data", xlab = "")
+
+pears_log_dist <- hclust(dist(pears_log))
+plot(pears_log_dist, main = "Pearson log data", xlab = "")
+
+
+```
+
+
 
 
 
