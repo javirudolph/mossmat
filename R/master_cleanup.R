@@ -19,7 +19,8 @@ voc_raw <- rawdata[,c(1,2,4,5, 20:109)] %>%
          sampid = Sample.Name,
          ssex = Sample_Sex) %>% 
   drop_na() %>% 
-  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""))
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"))
 
 #' Shorten voc names
 oldnames <- names(voc_raw)
@@ -59,7 +60,7 @@ voc_data %>%
   mutate(ssex = str_to_lower(as.character(ssex))) -> voc_clean
 
 # Clean data with the 10% threshold, only one measurement of vocs per individual (no duplicates)
-#saveRDS(voc_clean, "cleandata/voc_clean10.RDS")
+saveRDS(voc_clean, "cleandata/voc_clean10.RDS")
 
 
 
@@ -87,6 +88,7 @@ trait_raw <- rawdata[,1:19] %>%
          ssex = Sample_Sex) %>% 
   drop_na(famid) %>% 
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"),
          ssex = str_to_lower(as.character(ssex))) %>% 
   mutate_at(vars(starts_with("Leaf")), as.numeric) %>% 
   group_by(famid) %>% 
@@ -118,7 +120,7 @@ trait_identifiers <- trait_raw %>%
 
 trait_raw[,c(2, 17:19),] %>% 
   group_by(sampid) %>% 
-  summarise_at(vars(starts_with("Leaf")), mean) -> leaf_data
+  summarise_at(vars(starts_with("Leaf")), mean, na.rm = TRUE) -> leaf_data
 
 
 # Growth and Development traits -------------------------------------------
@@ -161,4 +163,4 @@ trait_identifiers %>%
               "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
               "days21", "days_gam", "lf_length", "lf_area", "lf_perim")) -> joined_traits
 
-#saveRDS(joined_traits, "cleandata/traits_clean.RDS")
+saveRDS(joined_traits, "cleandata/traits_clean.RDS")
