@@ -125,8 +125,7 @@ trait_raw[,c(2, 17:19),] %>%
 
 trait_raw[,c(2, 10:16)] %>% 
   drop_na() %>% 
-  distinct() %>% 
-  mutate_if(is.numeric, scale)-> gro_dev_data
+  distinct()-> gro_dev_data
 
 # Reproduction variable ---------------------------------------------------
 
@@ -162,4 +161,4 @@ trait_identifiers %>%
               "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
               "days21", "days_gam", "lf_length", "lf_area", "lf_perim")) -> joined_traits
 
-saveRDS(joined_traits, "cleandata/traits_clean.RDS")
+#saveRDS(joined_traits, "cleandata/traits_clean.RDS")
