@@ -299,16 +299,19 @@ legend("topright",
 ```
 
 
-We can try running a detrended correspondence analysis, which seems to show a bit more separation between compounds and perhaps some sort of grouping.
+We can try running a detrended correspondence analysis, which seems to show a bit more separation between compounds and perhaps some sort of grouping. But remember that this is doing the ordination by considering each sample. 
 
 ```{r fig.height=7, fig.width=12}
 dca_voc <- decorana(voc_log_data[,4:78])
 plot(dca_voc, display = "species")
+
+# cca_voc <- cca(voc_log_data[,4:78])
+# plot(cca_voc, display = "species")
 ```
 
 
 ## NMDS
-We can try an NMDS following the process Leslie had done in the past, which still doesn't show convergence. However, we can see that again, that the sexes very much overlap. If we do this by family they overlap as well, it seems like the zeroes really drive this dynamic. Perhaps we will have more luck with the correlations.
+We can try an NMDS following the process Leslie had done in the past, which still doesn't show convergence. However, we can see that again, that the sexes very much overlap. If we do this by family they overlap as well.
 
 ```{r}
 voc_nmds <- metaMDS(voc_log_data[,4:78])
@@ -454,12 +457,50 @@ par(mfrow=c(3,1))
 # Spearman with raw data
 spear_raw_dist <- hclust(dist(spear_raw))
 plot(spear_raw_dist, main = "Spearman raw data", xlab = "")
+identify(spear_raw_dist)
 
 pears_raw_dist <- hclust(dist(pears_raw))
 plot(pears_raw_dist, main = "Pearson raw data", xlab = "")
 
 pears_log_dist <- hclust(dist(pears_log))
 plot(pears_log_dist, main = "Pearson log data", xlab = "")
+
+```
+
+We can set the number of clusters, but I don't have any good reasoning for this number yet.
+But this is how those three methods are clustering the volatiles based on their distance matrices. The visualization is not great and not very intuitive, but overall, I am inclined to use the spearman clustering on raw data to calculate the grouped voc data frame.
+
+```{r fig.width=12}
+ksetup <- 15
+groups <- data.frame(clust_spear_raw = cutree(spear_raw_dist, k = ksetup)) %>% 
+  rownames_to_column() %>% 
+  bind_cols(., data.frame(clust_pears_raw = cutree(pears_raw_dist, k = ksetup)) %>% 
+  rownames_to_column()) %>% 
+  bind_cols(data.frame(clust_pears_log = cutree(pears_log_dist, k = ksetup)) %>% 
+  rownames_to_column()) %>% 
+  select(-c(rowname1, rowname2)) %>% 
+  rename(voc = rowname)
+
+  # gather(key = "corr", value = "group", -rowname) %>% 
+  # rename(voc = rowname) %>% 
+  # mutate(voc = factor(voc, levels = unique(voc)))
+
+# 
+# groups %>% 
+#   ggplot(aes(x = voc, y = corr, color = group)) +
+#   geom_point() +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = 90)) +
+#   scale_color_viridis_c()
+
+groups %>% 
+  ggplot(aes(x = clust_spear_raw, y = clust_pears_log, color = clust_pears_raw,
+             label = voc)) +
+  geom_label() +
+  theme_bw() +
+  geom_abline(slope = 1) +
+  scale_color_viridis_c()
+  
 
 
 ```

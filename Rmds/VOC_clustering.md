@@ -106,7 +106,8 @@ males and females overlap on their volatile profiles.
 
 We can try running a detrended correspondence analysis, which seems to
 show a bit more separation between compounds and perhaps some sort of
-grouping.
+grouping. But remember that this is doing the ordination by considering
+each sample.
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
@@ -115,33 +116,33 @@ grouping.
 We can try an NMDS following the process Leslie had done in the past,
 which still doesn’t show convergence. However, we can see that again,
 that the sexes very much overlap. If we do this by family they overlap
-as well, it seems like the zeroes really drive this dynamic. Perhaps we
-will have more luck with the correlations.
+as well.
 
     ## Run 0 stress 0.1517006 
-    ## Run 1 stress 0.1622404 
-    ## Run 2 stress 0.1605346 
-    ## Run 3 stress 0.1699362 
-    ## Run 4 stress 0.1592215 
-    ## Run 5 stress 0.1732302 
-    ## Run 6 stress 0.1626931 
-    ## Run 7 stress 0.1579694 
-    ## Run 8 stress 0.1600435 
-    ## Run 9 stress 0.1687295 
-    ## Run 10 stress 0.161576 
-    ## Run 11 stress 0.1651905 
-    ## Run 12 stress 0.1704195 
-    ## Run 13 stress 0.1553007 
-    ## Run 14 stress 0.1648408 
-    ## Run 15 stress 0.1583015 
-    ## Run 16 stress 0.1685205 
-    ## Run 17 stress 0.165166 
-    ## Run 18 stress 0.1637983 
-    ## Run 19 stress 0.1619776 
-    ## Run 20 stress 0.1729361 
+    ## Run 1 stress 0.1669731 
+    ## Run 2 stress 0.161971 
+    ## Run 3 stress 0.1564156 
+    ## Run 4 stress 0.1685735 
+    ## Run 5 stress 0.1601002 
+    ## Run 6 stress 0.1689283 
+    ## Run 7 stress 0.1648361 
+    ## Run 8 stress 0.1654474 
+    ## Run 9 stress 0.1617609 
+    ## Run 10 stress 0.1668672 
+    ## Run 11 stress 0.1665423 
+    ## Run 12 stress 0.1617102 
+    ## Run 13 stress 0.1693507 
+    ## Run 14 stress 0.1590808 
+    ## Run 15 stress 0.1776819 
+    ## Run 16 stress 0.1733823 
+    ## Run 17 stress 0.1712307 
+    ## Run 18 stress 0.1642263 
+    ## Run 19 stress 0.1719256 
+    ## Run 20 stress 0.1650716 
     ## *** No convergence -- monoMDS stopping criteria:
     ##      1: no. of iterations >= maxit
-    ##     19: stress ratio > sratmax
+    ##     18: stress ratio > sratmax
+    ##      1: scale factor of the gradient < sfgrmin
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
@@ -170,3 +171,11 @@ We could compare the clusters by the spearman vs pearson correlation
 coefficients.
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
+
+We can set the number of clusters, but I don’t have any good reasoning
+for this number yet. But this is how those three methods are clustering
+the volatiles based on their distance matrices. The visualization is not
+great and not very intuitive, but overall, I am inclined to use the
+spearman clustering on raw data to calculate the grouped voc data frame.
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
