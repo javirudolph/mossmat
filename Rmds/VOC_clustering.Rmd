@@ -243,7 +243,30 @@ long_logvoc%>%
   scale_color_manual(values = c("red", "darkgrey")) +
   theme(axis.text.x = element_text(angle = 90, color = colorstext$colorpot))
 
+
+
 ```
+
+```{r fig.width=24}
+
+long_logvoc %>% 
+  select(voc, colorpot) %>% 
+  mutate(colorpot2 = str_replace(colorpot, "red", "black")) %>% 
+  distinct() -> colorstext
+
+long_logvoc%>% 
+  #filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, fill = ssex, color = potentials)) + 
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  #geom_point() +
+  theme_bw() + 
+  labs(x = "VOC ID", y = "Log transformed concentration") +
+  scale_color_manual(values = c("black", "darkgrey")) +
+  #scale_fill_manual(values = c("red", "darkgrey")) +
+  theme(axis.text.x = element_text(angle = 90, color = colorstext$colorpot2))
+```
+
+
 
 ```{r fig.width=12, eval = FALSE}
 
@@ -534,6 +557,9 @@ clustered_voc_data %>%
   geom_boxplot() +
   theme_bw()
 
+```
+
+```{r eval = FALSE}
 
 clustered_voc_data %>% 
   gather(key = "voc_clust", value = "voc_value", -c(sampid, famid, ssex)) %>% 

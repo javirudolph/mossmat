@@ -96,6 +96,8 @@ so much. We might look into Spearman correlation or Kendall’s tau
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
 ## Ordination
 
 We will start with a PCA, since the goal of that is to reduce the number
@@ -103,14 +105,14 @@ of dimensions and see what compounds might be acting in a similar way.
 The hulls show something we were able to see before, and it’s that the
 males and females overlap on their volatile profiles.
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 We can try running a detrended correspondence analysis, which seems to
 show a bit more separation between compounds and perhaps some sort of
 grouping. But remember that this is doing the ordination by considering
 each sample.
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 ## NMDS
 
@@ -120,31 +122,31 @@ that the sexes very much overlap. If we do this by family they overlap
 as well.
 
     ## Run 0 stress 0.1517006 
-    ## Run 1 stress 0.1731178 
-    ## Run 2 stress 0.1579852 
-    ## Run 3 stress 0.1585338 
-    ## Run 4 stress 0.1719373 
-    ## Run 5 stress 0.1647762 
-    ## Run 6 stress 0.158756 
-    ## Run 7 stress 0.1730059 
-    ## Run 8 stress 0.1689202 
-    ## Run 9 stress 0.1576176 
-    ## Run 10 stress 0.1626033 
-    ## Run 11 stress 0.1705385 
-    ## Run 12 stress 0.1609621 
-    ## Run 13 stress 0.1643699 
-    ## Run 14 stress 0.1607823 
-    ## Run 15 stress 0.1672622 
-    ## Run 16 stress 0.1744383 
-    ## Run 17 stress 0.1625725 
-    ## Run 18 stress 0.1749521 
-    ## Run 19 stress 0.1749634 
-    ## Run 20 stress 0.170341 
+    ## Run 1 stress 0.166629 
+    ## Run 2 stress 0.1585116 
+    ## Run 3 stress 0.1637118 
+    ## Run 4 stress 0.1655121 
+    ## Run 5 stress 0.1584764 
+    ## Run 6 stress 0.1738794 
+    ## Run 7 stress 0.1594021 
+    ## Run 8 stress 0.1712921 
+    ## Run 9 stress 0.1597061 
+    ## Run 10 stress 0.1578251 
+    ## Run 11 stress 0.1670363 
+    ## Run 12 stress 0.1631534 
+    ## Run 13 stress 0.1775151 
+    ## Run 14 stress 0.1781404 
+    ## Run 15 stress 0.1710932 
+    ## Run 16 stress 0.1695101 
+    ## Run 17 stress 0.1762579 
+    ## Run 18 stress 0.1569946 
+    ## Run 19 stress 0.1662122 
+    ## Run 20 stress 0.1537557 
     ## *** No convergence -- monoMDS stopping criteria:
-    ##      2: no. of iterations >= maxit
-    ##     18: stress ratio > sratmax
+    ##      3: no. of iterations >= maxit
+    ##     17: stress ratio > sratmax
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 ## Correlations
 
@@ -157,7 +159,7 @@ groups. Based on those clustering groups we can combine them and create
 a new data frame with the raw data that we can later transform using the
 same log-shift tranformation.
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
 
 # Clustering
 
@@ -170,7 +172,7 @@ raw data or the transformed data for each cluster.
 We could compare the clusters by the spearman vs pearson correlation
 coefficients.
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
 
 We can set the number of clusters, but I don’t have any good reasoning
 for this number yet. But this is how those three methods are clustering
@@ -179,12 +181,12 @@ great and not very intuitive, but overall, I am inclined to use the
 spearman clustering on raw data to calculate the grouped voc data
     frame.
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
     ## Warning: Column `voc` joining factor and character vector, coercing into
     ## character vector
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-26-2.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
 # Additional thoughts
 
@@ -197,4 +199,4 @@ out.
 What if we only take those volatiles that had high median
 values?
 
-![](VOC_clustering_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-28-2.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-28-3.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-28-4.png)<!-- -->
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-30-2.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-30-3.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-30-4.png)<!-- -->
