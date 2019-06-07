@@ -12,7 +12,9 @@ The clean RDS data file should be available locally after you run the
 output the RDS we use here. The data we will be using has no duplicates
 and uses a 10% threshold. This threshold establishes the minimum number
 of samples that would show a given compound for that compound to be
-included in the analysis.
+included in the analysis. The reason why we don’t use a higher threshold
+is that since we are comparing males and females, we basically assume
+there’s only a 50% chance of a given volatile to be present.
 
 ## Data exploration
 
@@ -22,20 +24,25 @@ With a quick check, we see that the numbers are very small and that
 different compounds have very different ranges as well.  
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
 
-We also know that there are a significant number of zeros in the data,
-and if we visualize it without the zeroes, it can give us some insight
-regarding the abundant compounds which we are actually interested in.
-However, when you compare these two figures, they don’t seem too
-different
+Several of these compounds have a measure of zero, which kind of throws
+off the scaling and transformations:
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 We might want to get a hint of what the data looks like for males and
-females and how these might differ by family.
+females and how these might differ by family. Which, overall it seems
+like data between males and females isn’t too different, but seems like
+differences between families might be a thing.
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
-![](VOC_clustering_files/figure-gfm/facetPlot-1.png)<!-- -->
+<details>
+
+<summary> <i> Facet Plots </i>
+
+![](VOC_clustering_files/figure-gfm/facetPlot-1.png)<!-- --> </summary>
+
+</details>
 
 ## Data transformation
 
@@ -100,30 +107,30 @@ We can try an NMDS following the process Leslie had done in the past,
 which still doesn’t show convergence.
 
     ## Wisconsin double standardization
-    ## Run 0 stress 0.1117267 
-    ## Run 1 stress 0.1263973 
-    ## Run 2 stress 0.1282973 
-    ## Run 3 stress 0.1289812 
-    ## Run 4 stress 0.1250149 
-    ## Run 5 stress 0.1222848 
-    ## Run 6 stress 0.1231389 
-    ## Run 7 stress 0.123895 
-    ## Run 8 stress 0.1190794 
-    ## Run 9 stress 0.1230524 
-    ## Run 10 stress 0.1213023 
-    ## Run 11 stress 0.1214619 
-    ## Run 12 stress 0.1267318 
-    ## Run 13 stress 0.1255876 
-    ## Run 14 stress 0.1281756 
-    ## Run 15 stress 0.124551 
-    ## Run 16 stress 0.1281346 
-    ## Run 17 stress 0.1193285 
-    ## Run 18 stress 0.1166693 
-    ## Run 19 stress 0.121207 
-    ## Run 20 stress 0.1188776 
+    ## Run 0 stress 0.1115093 
+    ## Run 1 stress 0.1196349 
+    ## Run 2 stress 0.1198012 
+    ## Run 3 stress 0.1267598 
+    ## Run 4 stress 0.1186576 
+    ## Run 5 stress 0.1216793 
+    ## Run 6 stress 0.1256203 
+    ## Run 7 stress 0.1234117 
+    ## Run 8 stress 0.1192148 
+    ## Run 9 stress 0.1177543 
+    ## Run 10 stress 0.1289244 
+    ## Run 11 stress 0.1271547 
+    ## Run 12 stress 0.12603 
+    ## Run 13 stress 0.1194855 
+    ## Run 14 stress 0.1250388 
+    ## Run 15 stress 0.1259852 
+    ## Run 16 stress 0.1200902 
+    ## Run 17 stress 0.1279017 
+    ## Run 18 stress 0.1201084 
+    ## Run 19 stress 0.1267098 
+    ## Run 20 stress 0.1198467 
     ## *** No convergence -- monoMDS stopping criteria:
-    ##      2: no. of iterations >= maxit
-    ##     18: stress ratio > sratmax
+    ##      1: no. of iterations >= maxit
+    ##     19: stress ratio > sratmax
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
