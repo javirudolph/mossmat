@@ -133,21 +133,19 @@ trait_raw[,c(2, 10:16)] %>%
 
 trait_raw %>% 
   filter(ssex == "m") %>% 
-  select(sampid, ssex, Avg_Male_Buds.Stem) %>% 
+  select(sampid, ssex, Avg_Male_Buds.Stem)%>% 
   drop_na() %>% 
   group_by(sampid) %>% 
-  summarise(av = mean(Avg_Male_Buds.Stem)) %>% 
-  mutate(reprovar = scale(av)) %>% 
-  select(sampid, reprovar) -> male_reprovar
+  summarise(raw_av = mean(Avg_Male_Buds.Stem)) %>% 
+  mutate(reprovar = scale(raw_av))  -> male_reprovar
 
 trait_raw %>% 
   select(sampid, ssex, Avg_Arch) %>% 
   filter(ssex == "f") %>% 
   drop_na() %>% 
   group_by(sampid) %>% 
-  summarise(av = mean(Avg_Arch)) %>% 
-  mutate(reprovar = scale(av)) %>% 
-  select(sampid, reprovar) -> fem_reprovar
+  summarise(raw_av = mean(Avg_Arch)) %>% 
+  mutate(reprovar = scale(raw_av)) -> fem_reprovar
 
 
 reprovar <- bind_rows(male_reprovar, fem_reprovar)
@@ -159,7 +157,7 @@ trait_identifiers %>%
   full_join(., reprovar) %>% 
   full_join(., gro_dev_data) %>%
   full_join(., leaf_data) %>% 
-  set_names(c("famid", "sampid", "ssex", "repro", "area_wk3",
+  set_names(c("famid", "sampid", "ssex", "raw_repro", "repro", "area_wk3",
               "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
               "days21", "days_gam", "lf_length", "lf_area", "lf_perim")) -> joined_traits
 
