@@ -8,6 +8,7 @@ Volatile organic compounds clustering/ordination
       - [NMDS](#nmds)
       - [Correlations](#correlations)
   - [Clustering](#clustering)
+  - [Additional thoughts](#additional-thoughts)
 
 The clean RDS data file should be available locally after you run the
 `master_cleanup.R` file.This will take the master csv data file and
@@ -119,29 +120,29 @@ that the sexes very much overlap. If we do this by family they overlap
 as well.
 
     ## Run 0 stress 0.1517006 
-    ## Run 1 stress 0.1573683 
-    ## Run 2 stress 0.1623339 
-    ## Run 3 stress 0.1774314 
-    ## Run 4 stress 0.1635223 
-    ## Run 5 stress 0.1590244 
-    ## Run 6 stress 0.1708113 
-    ## Run 7 stress 0.1662455 
-    ## Run 8 stress 0.1764899 
-    ## Run 9 stress 0.4185265 
-    ## Run 10 stress 0.1695581 
-    ## Run 11 stress 0.1648518 
-    ## Run 12 stress 0.1641495 
-    ## Run 13 stress 0.1748294 
-    ## Run 14 stress 0.1665473 
-    ## Run 15 stress 0.4185118 
-    ## Run 16 stress 0.1614768 
-    ## Run 17 stress 0.4185192 
-    ## Run 18 stress 0.1599257 
-    ## Run 19 stress 0.1570622 
-    ## Run 20 stress 0.1702123 
+    ## Run 1 stress 0.1731178 
+    ## Run 2 stress 0.1579852 
+    ## Run 3 stress 0.1585338 
+    ## Run 4 stress 0.1719373 
+    ## Run 5 stress 0.1647762 
+    ## Run 6 stress 0.158756 
+    ## Run 7 stress 0.1730059 
+    ## Run 8 stress 0.1689202 
+    ## Run 9 stress 0.1576176 
+    ## Run 10 stress 0.1626033 
+    ## Run 11 stress 0.1705385 
+    ## Run 12 stress 0.1609621 
+    ## Run 13 stress 0.1643699 
+    ## Run 14 stress 0.1607823 
+    ## Run 15 stress 0.1672622 
+    ## Run 16 stress 0.1744383 
+    ## Run 17 stress 0.1625725 
+    ## Run 18 stress 0.1749521 
+    ## Run 19 stress 0.1749634 
+    ## Run 20 stress 0.170341 
     ## *** No convergence -- monoMDS stopping criteria:
-    ##      3: no. of iterations >= maxit
-    ##     17: stress ratio > sratmax
+    ##      2: no. of iterations >= maxit
+    ##     18: stress ratio > sratmax
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
@@ -182,3 +183,18 @@ spearman clustering on raw data to calculate the grouped voc data
 
     ## Warning: Column `voc` joining factor and character vector, coercing into
     ## character vector
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-26-2.png)<!-- -->
+
+# Additional thoughts
+
+I’m just not too happy with the clustering overall. I feel like you
+could have correlations just out of chance, I don’t know. I’m trying the
+ordination analysis with only the VOCs that have higher median
+concentrations after the log transformation and we can see what comes
+out.
+
+What if we only take those volatiles that had high median
+values?
+
+![](VOC_clustering_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-28-2.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-28-3.png)<!-- -->![](VOC_clustering_files/figure-gfm/unnamed-chunk-28-4.png)<!-- -->

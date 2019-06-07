@@ -368,6 +368,8 @@ ggplot() +
 ggarrange(NMDSplot, HULLSplot, ncol = 2)
 ```
 
+
+
 ## Correlations
 
 
@@ -457,7 +459,6 @@ par(mfrow=c(3,1))
 # Spearman with raw data
 spear_raw_dist <- hclust(dist(spear_raw))
 plot(spear_raw_dist, main = "Spearman raw data", xlab = "")
-identify(spear_raw_dist)
 
 pears_raw_dist <- hclust(dist(pears_raw))
 plot(pears_raw_dist, main = "Pearson raw data", xlab = "")
@@ -513,16 +514,111 @@ groups %>%
 
 long_voc_data %>% 
   left_join(groups[,1:2]) %>% 
-  group_by(sampid, clust_spear_raw) %>% 
+  group_by(sampid, clust_spear_raw, famid, ssex) %>% 
   summarise(voc_value = mean(conc)) %>% 
-  mutate(voc_log = log10(voc_value + det_thresh) - log10(det_thresh),
-         voc_clust = str_pad(clust_spear_raw, width = 2, side = "left", pad = 0),
-         voc_clust = paste0("clust_", voc_clust)) %>% 
-  select(sampid, voc_clust, voc_value) %>% 
+  mutate(voc_clust = str_pad(clust_spear_raw, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) %>%
+  ungroup() %>% 
+  select(-clust_spear_raw) %>% 
   spread(key = voc_clust, value = voc_value) -> clustered_voc_data
 
 saveRDS(clustered_voc_data, file = "cleandata/clustered_voc_data.RDS")
 ```
 
+```{r fig.width=12}
+clustered_voc_data %>% 
+  mutate_at(vars(starts_with("clus")),
+            list(~ log10(. + det_thresh) - log10(det_thresh))) %>% 
+  gather(key = "voc_clust", value = "voc_value", -c(sampid, famid, ssex)) %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, color = ssex)) + 
+  geom_boxplot() +
+  theme_bw()
+
+
+clustered_voc_data %>% 
+  gather(key = "voc_clust", value = "voc_value", -c(sampid, famid, ssex)) %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, color = ssex)) + 
+  geom_boxplot() +
+  theme_bw() +
+  labs(title = "Raw data")
+```
+
+
+
+# Additional thoughts
+I'm just not too happy with the clustering overall. I feel like you could have correlations just out of chance, I don't know. I'm trying the ordination analysis with only the VOCs that have higher median concentrations after the log transformation and we can see what comes out. 
+
+What if we only take those volatiles that had high median values?
+```{r}
+long_logvoc %>% 
+  filter(potentials == "high") %>% 
+  select(-c(median, potentials, colorpot)) %>% 
+  #select(sampid, voc, conc) %>% 
+  spread(key = voc, value = conc) -> high_vocs
+
+max_vocs <- ncol(high_vocs)
+
+```
+
+
+```{r fig.height=7, fig.width=12}
+
+log_pca <- rda(high_vocs[,4:max_vocs])
+# Figure for log transformed data
+biplot(log_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+ssex.colors <- levels(factor(high_vocs$ssex))
+ordihull(log_pca, group = factor(high_vocs$ssex),
+         col = c("blue","black"))
+legend("topright", 
+       col = c("blue", "black"),
+       lty = 1,
+       legend = ssex.colors)
+
+
+hi_corr <- cor(high_vocs[,4:max_vocs])
+corrplot(hi_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .6, order = "hclust")
+
+
+hi_corr_dist <- hclust(dist(hi_corr))
+plot(hi_corr_dist, main = "High VOC conc", xlab = "")
+rect.hclust(hi_corr_dist, k = 6)
+
+hi_groups <- data.frame(voc_clust = cutree(hi_corr_dist, k = 6)) %>% 
+  rownames_to_column(var = "voc")
+
+
+
+high_vocs %>% 
+  gather(key = voc, value = conc, -c(famid, sampid, ssex)) %>% 
+  left_join(hi_groups) %>% 
+  group_by(sampid, voc_clust, famid, ssex) %>% 
+  summarise(voc_value = mean(conc)) %>% 
+  ungroup() %>% 
+  mutate(voc_clust = str_pad(voc_clust, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) -> clust_hi_vocs
+
+
+# clust_hi_vocs %>% 
+#   mutate(voc_clust = factor(voc_clust, levels = unique(voc_clust))) %>% 
+#   ggplot(aes(x = voc_clust, y = voc_value, color = ssex)) +
+#   geom_point(alpha = 0.5) +
+#   facet_wrap(~famid, ncol = 6) +
+#   theme(axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank()) +
+#   scale_color_viridis_d(begin = 0.2, end = 0.8)
+
+
+clust_hi_vocs %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, color = ssex)) + 
+  geom_boxplot() +
+  theme_bw()
+
+
+
+
+```
 
 
