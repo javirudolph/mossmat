@@ -500,8 +500,6 @@ groups %>%
   theme_bw() +
   geom_abline(slope = 1) +
   scale_color_viridis_c()
-  
-
 
 ```
 
@@ -510,6 +508,21 @@ groups %>%
 
 
 
+```{r}
+# Use the spearman correlation on raw data to group the data and have a new dataset
+
+long_voc_data %>% 
+  left_join(groups[,1:2]) %>% 
+  group_by(sampid, clust_spear_raw) %>% 
+  summarise(voc_value = mean(conc)) %>% 
+  mutate(voc_log = log10(voc_value + det_thresh) - log10(det_thresh),
+         voc_clust = str_pad(clust_spear_raw, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) %>% 
+  select(sampid, voc_clust, voc_value) %>% 
+  spread(key = voc_clust, value = voc_value) -> clustered_voc_data
+
+saveRDS(clustered_voc_data, file = "cleandata/clustered_voc_data.RDS")
+```
 
 
 

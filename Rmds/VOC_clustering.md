@@ -119,30 +119,29 @@ that the sexes very much overlap. If we do this by family they overlap
 as well.
 
     ## Run 0 stress 0.1517006 
-    ## Run 1 stress 0.1669731 
-    ## Run 2 stress 0.161971 
-    ## Run 3 stress 0.1564156 
-    ## Run 4 stress 0.1685735 
-    ## Run 5 stress 0.1601002 
-    ## Run 6 stress 0.1689283 
-    ## Run 7 stress 0.1648361 
-    ## Run 8 stress 0.1654474 
-    ## Run 9 stress 0.1617609 
-    ## Run 10 stress 0.1668672 
-    ## Run 11 stress 0.1665423 
-    ## Run 12 stress 0.1617102 
-    ## Run 13 stress 0.1693507 
-    ## Run 14 stress 0.1590808 
-    ## Run 15 stress 0.1776819 
-    ## Run 16 stress 0.1733823 
-    ## Run 17 stress 0.1712307 
-    ## Run 18 stress 0.1642263 
-    ## Run 19 stress 0.1719256 
-    ## Run 20 stress 0.1650716 
+    ## Run 1 stress 0.1573683 
+    ## Run 2 stress 0.1623339 
+    ## Run 3 stress 0.1774314 
+    ## Run 4 stress 0.1635223 
+    ## Run 5 stress 0.1590244 
+    ## Run 6 stress 0.1708113 
+    ## Run 7 stress 0.1662455 
+    ## Run 8 stress 0.1764899 
+    ## Run 9 stress 0.4185265 
+    ## Run 10 stress 0.1695581 
+    ## Run 11 stress 0.1648518 
+    ## Run 12 stress 0.1641495 
+    ## Run 13 stress 0.1748294 
+    ## Run 14 stress 0.1665473 
+    ## Run 15 stress 0.4185118 
+    ## Run 16 stress 0.1614768 
+    ## Run 17 stress 0.4185192 
+    ## Run 18 stress 0.1599257 
+    ## Run 19 stress 0.1570622 
+    ## Run 20 stress 0.1702123 
     ## *** No convergence -- monoMDS stopping criteria:
-    ##      1: no. of iterations >= maxit
-    ##     18: stress ratio > sratmax
-    ##      1: scale factor of the gradient < sfgrmin
+    ##      3: no. of iterations >= maxit
+    ##     17: stress ratio > sratmax
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
@@ -176,6 +175,10 @@ We can set the number of clusters, but I don’t have any good reasoning
 for this number yet. But this is how those three methods are clustering
 the volatiles based on their distance matrices. The visualization is not
 great and not very intuitive, but overall, I am inclined to use the
-spearman clustering on raw data to calculate the grouped voc data frame.
+spearman clustering on raw data to calculate the grouped voc data
+    frame.
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+
+    ## Warning: Column `voc` joining factor and character vector, coercing into
+    ## character vector
