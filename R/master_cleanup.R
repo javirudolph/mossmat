@@ -116,7 +116,18 @@ trait_identifiers <- trait_raw %>%
   distinct()
 
 
+# Data entry errors -------------------------------------------------------
+
+# Seems like there are several data entry errors that throw off histograms:
+
 # Leaf data averaging -----------------------------------------------------
+
+trait_raw[,17:19] %>% 
+  gather(key = "trait", value = "value") %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+# These look ok to average
 
 trait_raw[,c(2, 17:19),] %>% 
   group_by(sampid) %>% 
@@ -125,6 +136,40 @@ trait_raw[,c(2, 17:19),] %>%
 
 # Growth and Development traits -------------------------------------------
 
+trait_raw[,10:16] %>% 
+  gather(key = "trait", value = "value") %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+# There are some crazy outliers here... 
+outliers <- which(trait_raw$Avg_Area._Week_3>50)
+View(trait_raw[outliers,])
+
+# The error is in the decimal point for the area and circularity:
+
+trait_raw$Avg_Area._Week_3[outliers] <- trait_raw$Avg_Area._Week_3[outliers] / 1000
+trait_raw$Avg_Circularity_Week.3[outliers] <- trait_raw$Avg_Circularity_Week.3[outliers] / 1000
+
+# check again 
+trait_raw[,10:16] %>% 
+  gather(key = "trait", value = "value") %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+# Looks better but, why are there negative values?
+negs <- which(trait_raw$Avg_Perimeter_Rate < 0)
+View(trait_raw[negs,])
+
+trait_raw$Avg_Perimeter_Rate[negs]
+trait_raw$Avg_Perimeter_Rate[negs] <- trait_raw$Avg_Perimeter_Rate[negs] /-10
+
+# Check 
+trait_raw[,10:16] %>% 
+  gather(key = "trait", value = "value") %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+# Now it's ok to get them
 trait_raw[,c(2, 10:16)] %>% 
   drop_na() %>% 
   distinct()-> gro_dev_data
@@ -149,6 +194,7 @@ trait_raw %>%
 
 
 reprovar <- bind_rows(male_reprovar, fem_reprovar)
+hist(reprovar$reprovar)
 
 
 # Join trait data ---------------------------------------------------------
