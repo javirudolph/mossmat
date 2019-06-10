@@ -10,4 +10,59 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 ```
 
-##
+```{r}
+library(tidyverse)
+library(ggpubr)
+```
+
+
+```{r}
+traits <- readRDS("cleandata/traits_clean.RDS")
+
+theme_set(theme_bw())
+```
+
+
+# Data transformation
+There are NAs in the data since some traits weren't measured. These are a problem when we do a log transformation. In my opinion, I wouldn't do a log transformation, just scale the variables. Specially for the days21 variable, we have lots of zeroes and will probably run into trouble there.
+
+```{r}
+
+traits %>% 
+  select(-c(famid, sampid, ssex, raw_repro)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#8e9998") +
+  facet_wrap( ~ trait, scales = "free")
+
+```
+
+If we scale the variables, they all look normal, except for days 21 and days gam. Which makes sense because these are different variables, they are not measurements, they are time to an event.
+
+```{r}
+traits %>% 
+  select(-c(famid, sampid, ssex, raw_repro)) %>%
+  #mutate_all(log10) %>% 
+  mutate_all(scale) %>% 
+  gather(key = "trait", value = "standardized_values") %>% 
+  ggplot(aes(x = standardized_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#87afac") +
+  facet_wrap( ~ trait, scales = "free")
+```
+
+```{r}
+traits %>% 
+  mutate_at(c(5:15), scale) -> scaled_traits
+```
+
+
+```{r}
+scaled_traits %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  cov() -> cov_mat_fems
+```
+
