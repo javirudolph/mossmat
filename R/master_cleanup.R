@@ -159,6 +159,6 @@ trait_identifiers %>%
   full_join(., leaf_data) %>% 
   set_names(c("famid", "sampid", "ssex", "raw_repro", "repro", "area_wk3",
               "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
-              "days21", "days_gam", "lf_length", "lf_area", "lf_perim")) -> joined_traits
+              "days21", "days_gam", "leaf_length", "leaf_area", "leaf_perim")) -> joined_traits
 
 saveRDS(joined_traits, "cleandata/traits_clean.RDS")
