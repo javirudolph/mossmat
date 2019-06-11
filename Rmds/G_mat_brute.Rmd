@@ -19,6 +19,12 @@ library(corrplot)
 
 ```{r}
 traits <- readRDS("cleandata/traits_clean.RDS")
+vocs <- readRDS("cleandata/clustered_voc_data.RDS")
+
+
+vocs %>% 
+  mutate_at(vars(starts_with("c")), list(~ log10(. + 1))) %>% 
+  mutate_at(vars(starts_with("c")), scale) -> vocs
 
 theme_set(theme_bw())
 ```
@@ -50,6 +56,18 @@ traits %>%
   geom_histogram(na.rm = TRUE, fill = "#87afac") +
   facet_wrap( ~ trait, scales = "free")
 ```
+
+
+```{r}
+vocs %>% 
+  select(-c(famid, sampid, ssex)) %>%
+  mutate_all(scale) %>% 
+  gather(key = "trait", value = "standardized_values") %>% 
+  ggplot(aes(x = standardized_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#8766a8") +
+  facet_wrap( ~ trait, scales = "free")
+```
+
 
 ```{r}
 traits %>% 
@@ -129,8 +147,6 @@ cov_mat_all %>%
 
 
 
-
-Mixed
 ```{r}
 scaled_traits %>% 
   filter(ssex == "m") %>% 
