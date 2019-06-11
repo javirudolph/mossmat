@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 ```{r}
 library(tidyverse)
 library(ggpubr)
+library(corrplot)
 ```
 
 
@@ -61,8 +62,67 @@ scaled_traits %>%
   filter(ssex == "f") %>% 
   group_by(famid) %>% 
   mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
   select(-c(sampid, ssex, raw_repro)) %>% 
   distinct() %>% 
-  cov() -> cov_mat_fems
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_fems
+
+cov_mat_fems %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "magma") +
+  theme(axis.text.x = element_text(angle = 90))
+
+
 ```
 
+```{r}
+scaled_traits %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_male
+
+cov_mat_male %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+```
+
+
+
+```{r}
+scaled_traits %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_all
+
+cov_mat_all %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "plasma") +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+```
