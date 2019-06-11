@@ -27,3 +27,5 @@ are not measurements, they are time to an event.
 ![](G_mat_brute_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ![](G_mat_brute_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+Mixed ![](G_mat_brute_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->

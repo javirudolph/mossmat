@@ -126,3 +126,43 @@ cov_mat_all %>%
 
 
 ```
+
+
+
+
+Mixed
+```{r}
+scaled_traits %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() -> male_data
+
+scaled_traits %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  filter(famid %in% male_data$famid) -> fem_data
+
+# Use only the families that have both males and females
+
+
+test_cov <- cov(male_data[,2:12], fem_data[,2:12], use = "na.or.complete")
+
+test_cov %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+
+```
+
