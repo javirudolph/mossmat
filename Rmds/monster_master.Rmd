@@ -1,0 +1,890 @@
+---
+title: "Monster master: we are doing everything here"
+output: 
+  github_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 14, fig.height = 6)
+
+```
+
+```{r libraries}
+library(tidyverse)
+library(vegan)
+library(plotly)
+library(corrplot)
+library(ggpubr)
+library(ggmosaic)
+```
+
+
+# Introduction
+This document will contain pretty much everything we have done so far. This works as a draft reference of where we are and what we have done. 
+
+# Data cleaning
+Data cleaning is a really important section since lots of our functions will throw errors with NAs, zeroes or any typos. 
+```{r}
+# Read in the raw data
+rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
+```
+
+
+## Trait data
+To make things a little easier we are going to tackle the trait data first and then we will go on to clean VOCs. Some changes that we wish to accomplish here include changing the variable names to simpler/shorter ones without special characters. We would also like to remove empty rows at the end, manage the zeroes and NAs. There are some errors in measurements and typos that we need to address. 
+
+```{r}
+
+trait_raw <- rawdata[,1:19] %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         ssex = Sample_Sex) %>% 
+  drop_na(famid) %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"),
+         ssex = str_to_lower(as.character(ssex))) %>% 
+  mutate_at(vars(starts_with("Leaf")), as.numeric) %>% 
+  group_by(famid) %>% 
+  arrange(sampid, .by_group = TRUE) %>% 
+  ungroup
+
+```
+
+Fixing some typos or data entry errors:
+```{r}
+# Fix a data entry error:
+# Check Github issue #5
+trait_raw$Avg_21_days[which(trait_raw$Avg_21_days == 33)] <- 0.33
+
+# Fix sex data entry error
+# Check Github issue #5
+trait_raw[which(trait_raw$sampid == "P_18_1_6_B"),]$ssex <- "m"
+trait_raw <- trait_raw[-which(trait_raw$sampid == "P_6_6_20"),]
+```
+
+#### Leaf traits
+
+```{r}
+# Leaf data averaging -----------------------------------------------------
+
+trait_raw[,17:19] %>% 
+  gather(key = "trait", value = "value") %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+```
+
+There are no clear outliers or errors, so these look ok to average and we create a new data frame with the leaf data. 
+```{r}
+
+trait_raw[,c(2, 17:19),] %>% 
+  group_by(sampid) %>% 
+  summarise_at(vars(starts_with("Leaf")), mean, na.rm = TRUE) -> leaf_data
+```
+
+#### Growth and development traits
+
+```{r}
+# Growth and Development traits -------------------------------------------
+
+trait_raw[,10:16] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+```
+
+There are some crazy outliers here...
+```{r}
+outliers <- which(trait_raw$Avg_Area._Week_3>50)
+trait_raw[outliers,]
+```
+
+The error is in the decimal point for the area and circularity: 
+```{r}
+trait_raw$Avg_Area._Week_3[outliers] <- trait_raw$Avg_Area._Week_3[outliers] / 1000
+trait_raw$Avg_Circularity_Week.3[outliers] <- trait_raw$Avg_Circularity_Week.3[outliers] / 1000
+
+# check again 
+trait_raw[,10:16] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+```
+
+Looks better but, why are there negative values? seems like a typo
+```{r}
+negs <- which(trait_raw$Avg_Perimeter_Rate < 0)
+trait_raw[negs,]
+
+trait_raw$Avg_Perimeter_Rate[negs]
+trait_raw$Avg_Perimeter_Rate[negs] <- trait_raw$Avg_Perimeter_Rate[negs] /-10
+
+# Check visually
+trait_raw[,10:16] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+```
+
+
+Now it's ok to get them as family averages:
+```{r}
+trait_raw[,c(2, 10:16)] %>% 
+  drop_na() %>% 
+  distinct()-> gro_dev_data
+```
+
+
+#### Reproduction variable
+We have different reproduction variables for males and females, so we can scale them and that way keep them under one variable only. This could be wrong, but I honestly don't know what else we could do.
+```{r}
+# Reproduction variable ---------------------------------------------------
+
+trait_raw %>% 
+  filter(ssex == "m") %>% 
+  select(sampid, ssex, Avg_Male_Buds.Stem)%>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(raw_av = mean(Avg_Male_Buds.Stem)) %>% 
+  mutate(reprovar = scale(raw_av),
+         ssex = "m")  -> male_reprovar
+
+trait_raw %>% 
+  select(sampid, ssex, Avg_Arch) %>% 
+  filter(ssex == "f") %>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(raw_av = mean(Avg_Arch)) %>% 
+  mutate(reprovar = scale(raw_av),
+         ssex = "f") -> fem_reprovar
+
+
+reprovar <- bind_rows(male_reprovar, fem_reprovar)
+reprovar %>% 
+  ggplot(aes(x = reprovar, fill = ssex)) +
+  geom_histogram()
+```
+
+### Clean trait data
+
+We can now join all the smaller datasets and have a master traits data frame. These are not scaled so far and we can evaluate the changes of scaling them vs keeping them as they are.
+```{r}
+# Join trait data ---------------------------------------------------------
+
+trait_raw %>% 
+  select(famid, sampid, ssex) %>% 
+  distinct() %>% 
+  full_join(., reprovar) %>% 
+  full_join(., gro_dev_data) %>%
+  full_join(., leaf_data) %>% 
+  set_names(c("famid", "sampid", "ssex", "raw_repro", "repro", "area_wk3",
+              "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
+              "days21", "days_gam", "leaf_length", "leaf_area",
+              "leaf_perim")) -> traits
+```
+
+#### Histograms raw trait data
+
+```{r}
+traits %>% 
+  select(-c(famid, sampid, ssex, raw_repro)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#8e9998") +
+  facet_wrap( ~ trait, scales = "free")
+```
+
+#### Histograms transformed trait data
+If we log transform the data and then scale it, the histograms look like this:
+
+```{r}
+names(traits)
+traits %>% 
+  mutate_at(c(5:15), list(~ log10(. + 1))) %>% 
+  mutate_at(c(5:15), scale) -> scaled_traits
+
+scaled_traits %>% 
+  select(-c(famid, sampid, ssex, raw_repro)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#7e9bcc") +
+  facet_wrap( ~ trait, scales = "free")
+```
+
+
+## Volatile Organic Compounds
+
+Using the same raw data csv file, we are going to select only the identifiers and the VOC data. 
+
+```{r}
+# Just keep volatile data and identifiers
+# Also, remove the NAs, there's a lot at the end
+# Remove '(2)' notation from sample ids
+voc_raw <- rawdata[,c(1,2,4,5, 20:109)] %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         ssex = Sample_Sex) %>% 
+  drop_na() %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"))
+
+#' Shorten voc names
+oldnames <- names(voc_raw)
+names(voc_raw)[4:93] <- stringr::str_trunc(oldnames[4:93], width = 6, side = "right", ellipsis = "")
+
+```
+
+There was an issue with the notation in one of the compounds, so we are checking that now:
+```{r}
+str(voc_raw)
+#' m111.0 is a factor
+voc_raw$m111.0
+#' The notation is different, using a capital E
+voc_raw$m111.0 <- as.numeric(str_replace(voc_raw$m111.0, "E", "e"))
+```
+
+
+Leslie mentioned that data associated to May 30 was really off, so we are going to check that and probably remove it if the values are not similar to the rest of the dataset. 
+
+```{r}
+
+```
+
+
+
+
+
+
+
+The clean RDS data file should be available locally after you run the `master_cleanup.R` file.This will take the master csv data file and output the RDS we use here. The data we will be using has no duplicates and uses a 10% threshold. This threshold establishes the minimum number of samples that would show a given compound for that compound to be included in the analysis. The reason why we don't use a higher threshold is that since we are comparing males and females, we basically assume there's only a 50% chance of a given volatile to be present. 
+
+```{r dataload}
+# source("R/master_cleanup.R")
+voc_data <- readRDS("cleandata/voc_clean10.RDS")
+
+# this is to use ggplot
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+```
+
+## Data exploration
+We know we are working with very small numbers and this influences how we will manage the data and what sort of clustering we can do for it. With a quick check, we see that the numbers are very small and that different compounds have very different ranges as well.  
+```{r}
+long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+Several of these compounds have a measure of zero, which kind of throws off the scaling and transformations:
+
+```{r}
+nsamp <- nrow(voc_data)
+# What if we just check the number of zeroes in each?
+long_voc_data %>% 
+  filter(conc == 0) %>% 
+  group_by(voc) %>% 
+  tally() %>% 
+  ggplot(aes(x = voc, y = n/nsamp)) +
+  labs(y = "Proportion of zeroes in data") +
+  geom_col() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+We might want to get a hint of what the data looks like for males and females and how these might differ by family. Which, overall it seems like data between males and females isn't too different, but seems like differences between families might be a thing.  
+
+```{r}
+
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  mutate(famid = as.numeric(famid)) %>% 
+  ggplot(., aes(x = voc, y = conc, color = famid)) +
+  geom_point(alpha = 0.4) +
+  scale_color_viridis_c() +
+  facet_wrap(~ ssex) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+
+```{r facetPlot, fig.height=12}
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank()) +
+  scale_color_viridis_d(begin = 0.2, end = 0.8)
+```
+
+
+## Log data
+
+With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf. This actually makes it easy to see that there are some outliers that should probably just be considered a zero. It is pretty clear that most of the compounds we are interested in are in a range.
+
+
+```{r}
+long_voc_data %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+```
+
+
+
+With the information, we can clean the data again and remove these outliers.
+```{r}
+# Making these outliers be zero
+voc_data[voc_data < 10e-15] <- 0
+
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = famid, shape = ssex)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10() +
+  scale_color_viridis_c()
+
+```
+
+
+```{r fig.height=12}
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  scale_y_log10() +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_color_viridis_d(begin = 0.2, end = 0.8)
+```
+Ok, this is good! and now we have a better idea of the data and how we can work with it for any ordination type of analysis.
+
+# Data transformation
+I am thinking that we can log transform the data, and add a really small value, probably set to the detection threshold of the instrument. Once it is in a log scale we can shift the values so that they are not negative but are on the positive side of the spectrum. This is not taking the absolute value but shifting with a sum so that the biggest values correspond to the largest concentrations of the compounds and smaller values correspond to smaller concentrations. If we were to take the absolute value this concept would be inverse and less intuitive. The following histograms are examples of these transformations using the data for compound **m87.04**
+
+```{r}
+long_voc_data %>% 
+  filter(voc == "m87.04") -> m87.04
+
+# Using this as an example https://www.ionicon.com/information/documentation/frequently-asked-questions#f23
+# The threshold for detection is 1 part-per-trillion, so 1e-12
+
+det_thresh <- 1e-12
+
+# Raw distribution
+m87.04 %>% 
+  ggplot() +
+  geom_histogram(aes(x = conc)) + 
+  labs(title = "Raw distribution") -> raw
+
+# log distribution, there are 3 zeroes that get removed
+m87.04 %>% 
+  mutate(conc = log10(conc)) %>% 
+  ggplot() +
+  geom_histogram(aes(x = conc)) + 
+  lims(x = c(-12, 0)) +
+  labs(title = "Log transformed - zero removed") -> logh
+
+# if we add the minimum value so we don't loose the zeroes
+head(sort(m87.04$conc))
+m87.04 %>% 
+  mutate(conc = log10(conc + det_thresh)) %>% 
+  ggplot() +
+  geom_histogram(aes(x = conc)) +
+  lims(x = c(-12, 0)) +
+  labs(title = "Log - zero set to detection threshold") -> logz
+
+# if to the one we added the minimum we shift it to all values are positive
+m87.04 %>% 
+  mutate(conc = log10(conc + det_thresh) - log10(det_thresh)) %>%  
+  ggplot() +
+  geom_histogram(aes(x = conc)) +
+  lims(x = c(0, 12)) +
+  labs(title = "Log shifted - by detection threshold") -> logzshift
+
+# Take absolute value is like mirror, so all are positives
+m87.04 %>% 
+  mutate(conc = abs(log10(conc + det_thresh))) %>%  
+  ggplot() +
+  geom_histogram(aes(x = conc)) +
+  lims(x = c(0, 12)) +
+  labs(title = "Absolute value log transform") -> logzabs
+
+
+ggarrange(raw, logh, logz, logzabs, logzshift, ncol = 2, nrow = 3)
+
+```
+
+```{r}
+voc_log_data <- voc_data %>% 
+  mutate_at(vars(starts_with("m")), list(~ log10(. + det_thresh) - log10(det_thresh)))
+```
+
+This is how the transformed data looks now. Zeroes really screw everything up. I'm wondering if we need to think of using rank-based estimators for the correlations, this way the zeros wouldn't affect it so much. We might look into Spearman correlation or Kendall's tau
+
+```{r fig.height=12, eval = FALSE}
+
+voc_log_data %>%
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc))) %>% 
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_color_viridis_d(begin = 0.2, end = 0.8)
+
+```
+
+```{r}
+
+voc_log_data %>%
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc))) %>% 
+  group_by(voc) %>% 
+  mutate(median = median(conc),
+         potentials = ifelse(median > 4.5, "high", "low"),
+         colorpot = ifelse(potentials == "high", "red", "darkgrey")) -> long_logvoc
+```
+
+```{r fig.width=12}
+
+long_logvoc %>% 
+  select(voc, colorpot) %>% 
+  distinct() -> colorstext
+
+long_logvoc%>% 
+  #filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = potentials)) + 
+  geom_boxplot(notch = TRUE) +
+  #geom_point() +
+  theme_bw() + 
+  labs(x = "VOC ID", y = "Log transformed concentration") +
+  scale_color_manual(values = c("red", "darkgrey")) +
+  theme(axis.text.x = element_text(angle = 90, color = colorstext$colorpot))
+
+
+
+```
+
+```{r fig.width=24}
+
+long_logvoc %>% 
+  select(voc, colorpot) %>% 
+  mutate(colorpot2 = str_replace(colorpot, "red", "black")) %>% 
+  distinct() -> colorstext
+
+long_logvoc%>% 
+  #filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, fill = ssex, color = potentials)) + 
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  #geom_point() +
+  theme_bw() + 
+  labs(x = "VOC ID", y = "Log transformed concentration") +
+  scale_color_manual(values = c("black", "darkgrey")) +
+  #scale_fill_manual(values = c("red", "darkgrey")) +
+  theme(axis.text.x = element_text(angle = 90, color = colorstext$colorpot2))
+```
+
+
+
+```{r fig.width=12, eval = FALSE}
+
+long_logvoc%>% 
+  filter(ssex == "m") %>% 
+  ggplot(aes(x = voc, y = conc, color = potentials)) + 
+  geom_boxplot(notch = TRUE) +
+  #geom_point() +
+  theme_bw() + 
+  labs(x = "VOC ID", y = "Log transformed concentration") +
+  scale_color_manual(values = c("red", "darkgrey")) +
+  theme(axis.text.x = element_text(angle = 90, color = colorstext$colorpot)) -> malesbox
+
+
+long_logvoc%>% 
+  filter(ssex == "f") %>% 
+  ggplot(aes(x = voc, y = conc, color = potentials)) + 
+  geom_boxplot(notch = TRUE) +
+  #geom_point() +
+  theme_bw() + 
+  labs(x = "VOC ID", y = "Log transformed concentration") +
+  scale_color_manual(values = c("red", "darkgrey")) +
+  theme(axis.text.x = element_text(angle = 90, color = colorstext$colorpot)) -> fembox
+
+ggarrange(malesbox, fembox, nrow = 2)
+
+```
+
+
+
+## Ordination
+We will start with a PCA, since the goal of that is to reduce the number of dimensions and see what compounds might be acting in a similar way. The hulls show something we were able to see before, and it's that the males and females overlap on their volatile profiles.
+
+
+```{r fig.height=7, fig.width=12}
+
+log_pca <- rda(voc_log_data[,4:78])
+# Figure for log transformed data
+biplot(log_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+ssex.colors <- levels(factor(voc_data$ssex))
+ordihull(log_pca, group = factor(voc_log_data$ssex),
+         col = c("blue","black"))
+legend("topright", 
+       col = c("blue", "black"),
+       lty = 1,
+       legend = ssex.colors)
+
+
+
+```
+
+
+We can try running a detrended correspondence analysis, which seems to show a bit more separation between compounds and perhaps some sort of grouping. But remember that this is doing the ordination by considering each sample. 
+
+```{r fig.height=7, fig.width=12}
+dca_voc <- decorana(voc_log_data[,4:78])
+plot(dca_voc, display = "species")
+
+# cca_voc <- cca(voc_log_data[,4:78])
+# plot(cca_voc, display = "species")
+```
+
+
+## NMDS
+We can try an NMDS following the process Leslie had done in the past, which still doesn't show convergence. However, we can see that again, that the sexes very much overlap. If we do this by family they overlap as well.
+
+```{r}
+voc_nmds <- metaMDS(voc_log_data[,4:78])
+```
+
+```{r}
+scores <- as.data.frame(scores(voc_nmds)) %>% 
+  mutate(samplenum = rownames(.),
+         family = factor(voc_log_data$famid),
+         sex = factor(voc_log_data$ssex))
+
+
+vol.scores <- voc_nmds$species %>% 
+  as.data.frame() %>% 
+  mutate(vol.ident = rownames(.))
+
+scores %>% 
+  mutate(family = as.numeric(family)) %>% 
+  ggplot() +
+  theme_bw() + 
+  geom_point(aes(x = NMDS1, y = NMDS2, color = family)) +
+  #scale_color_viridis_d() +
+  scale_color_viridis_c() +
+  coord_equal() -> NMDSplot
+```
+
+
+```{r}
+
+scores %>% 
+  group_by(sex) %>%
+  nest() %>% 
+  mutate(
+    hull = map(data, ~ with(., chull(NMDS1, NMDS2))),
+    out = map2(data, hull, ~ .x[.y,,drop=FALSE])
+  ) %>% 
+  select(-data) %>% 
+  unnest() -> hullData
+
+
+ggplot() +
+  theme_bw() +
+  #geom_text(data = spp_scores, aes(x = MDS1, y = MDS2, label = species)) +
+  #geom_text(data = scores, aes(x = NMDS1, y = NMDS2, label = site)) + 
+  geom_polygon(data = hullData, aes(x = NMDS1, y = NMDS2, fill = sex, group = sex), alpha = 0.2) +
+  geom_point(data = scores, aes(x = NMDS1, y = NMDS2, color = sex)) +
+  coord_equal() +
+  scale_fill_viridis_d() +
+  scale_color_viridis_d() -> HULLSplot
+```
+
+```{r fig.width=12}
+
+ggarrange(NMDSplot, HULLSplot, ncol = 2)
+```
+
+
+
+## Correlations
+
+
+```{r}
+# Run different correlations
+
+pears_raw <- cor(voc_data[,4:78])
+spear_raw <- cor(voc_data[,4:78], method = "spearman")
+
+pears_log <- cor(voc_log_data[,4:78])
+spear_log <- cor(voc_log_data[,4:78], method = "spearman")
+
+all_cors <- list(pears_raw = pears_raw, spear_raw = spear_raw, 
+                 pears_log = pears_log, spear_log = spear_log)
+
+```
+
+These correlation matrices are using all of the data, not separated by sexes. We can see that using the rank-based correlation, the values are not affected by the transformation. These correlation matrices are clustered by the correlation coefficients. Based on this, I would rather use a Spearman correlation on the raw data to determine the clustering groups. Based on those clustering groups we can combine them and create a new data frame with the raw data that we can later transform using the same log-shift tranformation.
+
+```{r fig.width=12, fig.height=12}
+par(mfrow = c(2,2))
+for(i in 1:4){
+  title <- names(all_cors)[i]
+  
+  corrplot(all_cors[[i]], main = title, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, order = "hclust", mar=c(0,0,2,0))
+  
+  #corrplot(all_cors[[i]], main = title, method = "circle", tl.col = "black", tl.srt = 45, tl.cex = .3, order = "hclust", addrect = 10, mar=c(0,0,2,0))
+  
+}
+
+```
+
+
+
+```{r}
+# The following comparison is for clusters between males and females. Based on the previous figures, the Spearman correlation between raw and transformed data is basically the same, so to get the most info, I'll use the raw data and both types of correlations to compare males and females.
+voc_data %>% 
+  filter(ssex == "m") %>% 
+  select(-c(sampid, famid, ssex)) -> maledata
+
+voc_data %>% 
+  filter(ssex == "f") %>% 
+  select(-c(sampid, famid, ssex)) -> femdata
+
+pears_fem <- cor(femdata)
+pears_male <- cor(maledata)
+spear_fem <- cor(femdata, method = "spearman")
+spear_male <- cor(maledata, method = "spearman")
+
+pears_fem_log <- cor(voc_log_data %>% 
+  filter(ssex == "f") %>% 
+  select(-c(sampid, famid, ssex)))
+
+pears_male_log <- cor(voc_log_data %>% 
+  filter(ssex == "m") %>% 
+  select(-c(sampid, famid, ssex)))
+
+
+ssex_cors <- list(spear_fem = spear_fem, spear_male = spear_male,
+                  pears_fem = pears_fem, pears_male = pears_male,
+                  pears_fem_log = pears_fem_log, pears_male_log = pears_male_log)
+
+```
+
+```{r fig.width=12, fig.height=18, eval = FALSE}
+par(mfrow = c(3,2))
+for(i in 1:6){
+  title <- names(ssex_cors)[i]
+  
+  corrplot(ssex_cors[[i]], main = title, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, mar=c(0,0,2,0))
+  
+  #corrplot(all_cors[[i]], main = title, method = "circle", tl.col = "black", tl.srt = 45, tl.cex = .3, order = "hclust", addrect = 10, mar=c(0,0,2,0))
+  
+}
+
+```
+
+
+# Clustering
+
+Enough of visualizing things. So now let's get some clustering going so we can determine what groups can go together. A question with this is the effect of a transformation on the data and the clustering. And with that, also considering whether we want to take a weighted average of the raw data or the transformed data for each cluster. 
+
+We could compare the clusters by the spearman vs pearson correlation coefficients. 
+
+```{r fig.width=14, fig.height=14}
+par(mfrow=c(3,1))
+# Spearman with raw data
+spear_raw_dist <- hclust(dist(spear_raw))
+plot(spear_raw_dist, main = "Spearman raw data", xlab = "")
+
+pears_raw_dist <- hclust(dist(pears_raw))
+plot(pears_raw_dist, main = "Pearson raw data", xlab = "")
+
+pears_log_dist <- hclust(dist(pears_log))
+plot(pears_log_dist, main = "Pearson log data", xlab = "")
+
+```
+
+We can set the number of clusters, but I don't have any good reasoning for this number yet.
+But this is how those three methods are clustering the volatiles based on their distance matrices. The visualization is not great and not very intuitive, but overall, I am inclined to use the spearman clustering on raw data to calculate the grouped voc data frame.
+
+```{r fig.width=12}
+ksetup <- 15
+groups <- data.frame(clust_spear_raw = cutree(spear_raw_dist, k = ksetup)) %>% 
+  rownames_to_column() %>% 
+  bind_cols(., data.frame(clust_pears_raw = cutree(pears_raw_dist, k = ksetup)) %>% 
+  rownames_to_column()) %>% 
+  bind_cols(data.frame(clust_pears_log = cutree(pears_log_dist, k = ksetup)) %>% 
+  rownames_to_column()) %>% 
+  select(-c(rowname1, rowname2)) %>% 
+  rename(voc = rowname)
+
+  # gather(key = "corr", value = "group", -rowname) %>% 
+  # rename(voc = rowname) %>% 
+  # mutate(voc = factor(voc, levels = unique(voc)))
+
+# 
+# groups %>% 
+#   ggplot(aes(x = voc, y = corr, color = group)) +
+#   geom_point() +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = 90)) +
+#   scale_color_viridis_c()
+
+groups %>% 
+  ggplot(aes(x = clust_spear_raw, y = clust_pears_log, color = clust_pears_raw,
+             label = voc)) +
+  geom_label() +
+  theme_bw() +
+  geom_abline(slope = 1) +
+  scale_color_viridis_c()
+
+```
+
+
+
+
+
+
+```{r}
+# Use the spearman correlation on raw data to group the data and have a new dataset
+
+long_voc_data %>% 
+  left_join(groups[,1:2]) %>% 
+  group_by(sampid, clust_spear_raw, famid, ssex) %>% 
+  summarise(voc_value = mean(conc)) %>% 
+  mutate(voc_clust = str_pad(clust_spear_raw, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) %>%
+  ungroup() %>% 
+  select(-clust_spear_raw) %>% 
+  spread(key = voc_clust, value = voc_value) -> clustered_voc_data
+
+saveRDS(clustered_voc_data, file = "cleandata/clustered_voc_data.RDS")
+```
+
+```{r fig.width=12}
+clustered_voc_data %>% 
+  mutate_at(vars(starts_with("clus")),
+            list(~ log10(. + det_thresh) - log10(det_thresh))) %>% 
+  gather(key = "voc_clust", value = "voc_value", -c(sampid, famid, ssex)) %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, color = ssex)) + 
+  geom_boxplot() +
+  theme_bw()
+
+```
+
+```{r eval = FALSE}
+
+clustered_voc_data %>% 
+  gather(key = "voc_clust", value = "voc_value", -c(sampid, famid, ssex)) %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, color = ssex)) + 
+  geom_boxplot() +
+  theme_bw() +
+  labs(title = "Raw data")
+```
+
+
+
+# Additional thoughts
+I'm just not too happy with the clustering overall. I feel like you could have correlations just out of chance, I don't know. I'm trying the ordination analysis with only the VOCs that have higher median concentrations after the log transformation and we can see what comes out. 
+
+What if we only take those volatiles that had high median values?
+```{r}
+long_logvoc %>% 
+  filter(potentials == "high") %>% 
+  select(-c(median, potentials, colorpot)) %>% 
+  #select(sampid, voc, conc) %>% 
+  spread(key = voc, value = conc) -> high_vocs
+
+max_vocs <- ncol(high_vocs)
+
+```
+
+
+```{r fig.height=7, fig.width=12}
+
+log_pca <- rda(high_vocs[,4:max_vocs])
+# Figure for log transformed data
+biplot(log_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+ssex.colors <- levels(factor(high_vocs$ssex))
+ordihull(log_pca, group = factor(high_vocs$ssex),
+         col = c("blue","black"))
+legend("topright", 
+       col = c("blue", "black"),
+       lty = 1,
+       legend = ssex.colors)
+
+
+hi_corr <- cor(high_vocs[,4:max_vocs])
+corrplot(hi_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .6, order = "hclust")
+
+
+hi_corr_dist <- hclust(dist(hi_corr))
+plot(hi_corr_dist, main = "High VOC conc", xlab = "")
+rect.hclust(hi_corr_dist, k = 6)
+
+hi_groups <- data.frame(voc_clust = cutree(hi_corr_dist, k = 6)) %>% 
+  rownames_to_column(var = "voc")
+
+
+
+high_vocs %>% 
+  gather(key = voc, value = conc, -c(famid, sampid, ssex)) %>% 
+  left_join(hi_groups) %>% 
+  group_by(sampid, voc_clust, famid, ssex) %>% 
+  summarise(voc_value = mean(conc)) %>% 
+  ungroup() %>% 
+  mutate(voc_clust = str_pad(voc_clust, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) -> clust_hi_vocs
+
+
+# clust_hi_vocs %>% 
+#   mutate(voc_clust = factor(voc_clust, levels = unique(voc_clust))) %>% 
+#   ggplot(aes(x = voc_clust, y = voc_value, color = ssex)) +
+#   geom_point(alpha = 0.5) +
+#   facet_wrap(~famid, ncol = 6) +
+#   theme(axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank()) +
+#   scale_color_viridis_d(begin = 0.2, end = 0.8)
+
+
+clust_hi_vocs %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, color = ssex)) + 
+  geom_boxplot() +
+  theme_bw()
+
+
+
+
+```
+
+
