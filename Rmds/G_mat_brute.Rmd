@@ -20,11 +20,13 @@ library(corrplot)
 ```{r}
 traits <- readRDS("cleandata/traits_clean.RDS")
 vocs <- readRDS("cleandata/clustered_voc_data.RDS")
+str(vocs)
 
 
 vocs %>% 
   mutate_at(vars(starts_with("c")), list(~ log10(. + 1))) %>% 
   mutate_at(vars(starts_with("c")), scale) -> vocs
+
 
 theme_set(theme_bw())
 ```
@@ -72,8 +74,11 @@ vocs %>%
 ```{r}
 traits %>% 
   mutate_at(c(5:15), scale) -> scaled_traits
+
+master <- full_join(x = scaled_traits, y = vocs)
 ```
 
+# JUST TRAITS
 
 ```{r}
 scaled_traits %>% 
@@ -181,4 +186,249 @@ test_cov %>%
 
 
 ```
+
+
+
+# Just VOCs
+
+```{r}
+vocs %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_fems
+
+cov_mat_fems %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "magma") +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+```
+
+```{r}
+vocs %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_male
+
+cov_mat_male %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+```
+
+
+
+```{r}
+vocs %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_all
+
+cov_mat_all %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "plasma") +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+```
+
+
+
+```{r, eval = FALSE}
+vocs %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() -> male_data
+
+vocs %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  filter(famid %in% male_data$famid) -> fem_data
+
+# Use only the families that have both males and females
+
+fem_data %>%
+  filter(famid %in% male_data$famid) -> fem_data
+
+test_cov <- cov(male_data[,2:16], fem_data[,2:16], use = "na.or.complete")
+
+test_cov %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+
+```
+
+# ALL STUFF
+
+```{r}
+master %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:30), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_fems
+
+cov_mat_fems %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "magma") +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+```
+
+```{r}
+master %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:30), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_male
+
+cov_mat_male %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+```
+
+
+
+```{r}
+master %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:30), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_all
+
+cov_mat_all %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "plasma") +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+```
+
+
+
+```{r eval = FALSE}
+master %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:30), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() -> male_data
+
+master %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:30), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  filter(famid %in% male_data$famid) -> fem_data
+
+# Use only the families that have both males and females
+
+
+test_cov <- cov(male_data[,2:12], fem_data[,2:12], use = "na.or.complete")
+
+test_cov %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90))
+
+
+
+```
+
+
+
+
+
+```{r}
+# Correlation using only the females that have both males and females
+
+test_cor <- cor(male_data[,2:12], fem_data[,2:12], use = "na.or.complete")
+
+
+corrplot(test_cor)
+
+test_cor %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
 
