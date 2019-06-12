@@ -2,9 +2,18 @@ G matrix - brute force
 ================
 
 -   [Data transformation](#data-transformation)
--   [JUST TRAITS](#just-traits)
+-   [Scaling volatile data](#scaling-volatile-data)
+-   [Scaling traits](#scaling-traits)
+-   [JUST TRAITS DATA](#just-traits-data)
+-   [ALL TRAIT DATA COVARIANCE MATRIX but not seperated by sex.](#all-trait-data-covariance-matrix-but-not-seperated-by-sex.)
+-   [All traits by filtering with only families shared between males and females. Plotted males vs females](#all-traits-by-filtering-with-only-families-shared-between-males-and-females.-plotted-males-vs-females)
 -   [Just VOCs](#just-vocs)
--   [ALL STUFF](#all-stuff)
+-   [All data not female vs male](#all-data-not-female-vs-male)
+-   [All vocs filtered by those with Male and female families. Plot M v F](#all-vocs-filtered-by-those-with-male-and-female-families.-plot-m-v-f)
+-   [Combined life history and volatile data](#combined-life-history-and-volatile-data)
+-   [All data for males](#all-data-for-males)
+-   [All data but not filtered by sex](#all-data-but-not-filtered-by-sex)
+-   [ALl data filtered by males v females](#all-data-filtered-by-males-v-females)
 
     ## Warning: package 'tidyr' was built under R version 3.5.2
 
@@ -42,38 +51,95 @@ If we scale the variables, they all look normal, except for days 21 and days gam
 
 ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-4-1.png)
 
+Scaling volatile data
+=====================
+
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
 ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-5-1.png)
 
-JUST TRAITS
-===========
+Scaling traits
+==============
 
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-7-1.png)
+JUST TRAITS DATA
+================
 
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-8-1.png)
+FEMALE TRAIT COVARIANCE MATRIX ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-7-1.png)
 
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-9-1.png)
+Correlation matrix females life history traits ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-8-1.png)
 
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-10-1.png)
+MALE TRAIT COVARIANCE MATRIX ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-9-1.png)
+
+Correlation matrix males life history traits ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-10-1.png)
+
+ALL TRAIT DATA COVARIANCE MATRIX but not seperated by sex.
+==========================================================
+
+![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-11-1.png)
+
+Correlation matrix for all life history traits ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-12-1.png)
+
+All traits by filtering with only families shared between males and females. Plotted males vs females
+=====================================================================================================
+
+All traits filtered males v females covariance ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-13-1.png)
+
+All traits filtered males v females correlation ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-14-1.png)
 
 Just VOCs
 =========
 
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-11-1.png)
-
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-12-1.png)
-
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-13-1.png)
-
-ALL STUFF
-=========
+Female volatiles covariance plot
 
 ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-15-1.png)
 
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-16-1.png)
+Female volatiles correlation plot ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-16-1.png)
 
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-17-1.png)
+Male volatile covariance matrix ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-17-1.png)
 
-![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-19-1.png)![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-19-2.png)
+Male volatile correlation matrix ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-18-1.png)
+
+All data not female vs male
+===========================
+
+![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-19-1.png)
+
+Male volatile correlation matrix ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-20-1.png)
+
+All vocs filtered by those with Male and female families. Plot M v F
+====================================================================
+
+Male vs female covariance
+
+Male vs female correlation ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-22-1.png)
+
+Combined life history and volatile data
+=======================================
+
+Female all covariance ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-23-1.png)
+
+Female all correlation ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-24-1.png)
+
+All data for males
+==================
+
+![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-25-1.png)
+
+male all correlation ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-26-1.png)
+
+All data but not filtered by sex
+================================
+
+All data covariance ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-27-1.png)
+
+all data correlation ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-28-1.png)
+
+ALl data filtered by males v females
+====================================
+
+Covariance for males v female for all data
+
+Correlation for all data for males vs females ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-30-1.png)
+
+Correlation using only the females that have both males and females ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-31-1.png)![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-31-2.png)
