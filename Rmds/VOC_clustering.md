@@ -122,29 +122,29 @@ that the sexes very much overlap. If we do this by family they overlap
 as well.
 
     ## Run 0 stress 0.1517006 
-    ## Run 1 stress 0.166629 
-    ## Run 2 stress 0.1585116 
-    ## Run 3 stress 0.1637118 
-    ## Run 4 stress 0.1655121 
-    ## Run 5 stress 0.1584764 
-    ## Run 6 stress 0.1738794 
-    ## Run 7 stress 0.1594021 
-    ## Run 8 stress 0.1712921 
-    ## Run 9 stress 0.1597061 
-    ## Run 10 stress 0.1578251 
-    ## Run 11 stress 0.1670363 
-    ## Run 12 stress 0.1631534 
-    ## Run 13 stress 0.1775151 
-    ## Run 14 stress 0.1781404 
-    ## Run 15 stress 0.1710932 
-    ## Run 16 stress 0.1695101 
-    ## Run 17 stress 0.1762579 
-    ## Run 18 stress 0.1569946 
-    ## Run 19 stress 0.1662122 
-    ## Run 20 stress 0.1537557 
+    ## Run 1 stress 0.1725787 
+    ## Run 2 stress 0.17362 
+    ## Run 3 stress 0.1571501 
+    ## Run 4 stress 0.1715188 
+    ## Run 5 stress 0.1709278 
+    ## Run 6 stress 0.1694419 
+    ## Run 7 stress 0.1729358 
+    ## Run 8 stress 0.1859078 
+    ## Run 9 stress 0.1577184 
+    ## Run 10 stress 0.1687199 
+    ## Run 11 stress 0.1756875 
+    ## Run 12 stress 0.1732993 
+    ## Run 13 stress 0.1693297 
+    ## Run 14 stress 0.1585592 
+    ## Run 15 stress 0.1567032 
+    ## Run 16 stress 0.1728994 
+    ## Run 17 stress 0.1641704 
+    ## Run 18 stress 0.1697732 
+    ## Run 19 stress 0.1703507 
+    ## Run 20 stress 0.1621181 
     ## *** No convergence -- monoMDS stopping criteria:
-    ##      3: no. of iterations >= maxit
-    ##     17: stress ratio > sratmax
+    ##      1: no. of iterations >= maxit
+    ##     19: stress ratio > sratmax
 
 ![](VOC_clustering_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 

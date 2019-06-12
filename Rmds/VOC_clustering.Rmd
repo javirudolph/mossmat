@@ -190,8 +190,16 @@ m87.04 %>%
   lims(x = c(0, 12)) +
   labs(title = "Absolute value log transform") -> logzabs
 
+# Classic log plus 1
+m87.04 %>% 
+  mutate(conc = log10(conc + 1)) %>%  
+  ggplot() +
+  geom_histogram(aes(x = conc)) +
+  #lims(x = c(0, 12)) +
+  labs(title = "Classic log transform + 1") -> logplus1
 
-ggarrange(raw, logh, logz, logzabs, logzshift, ncol = 2, nrow = 3)
+
+ggarrange(raw, logplus1, logh, logz, logzabs, logzshift, ncol = 2, nrow = 3)
 
 ```
 
