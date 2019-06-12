@@ -9,10 +9,18 @@ Monster master: we are doing everything here
             traits](#growth-and-development-traits)
           - [Reproduction variable](#reproduction-variable)
           - [Clean trait data](#clean-trait-data)
+              - [Histograms raw trait data](#histograms-raw-trait-data)
+              - [Histograms transformed trait
+                data](#histograms-transformed-trait-data)
       - [Volatile Organic Compounds](#volatile-organic-compounds)
           - [May 30 samples](#may-30-samples)
           - [Using a 10% threshold](#using-a-10-threshold)
           - [VOC Clustering](#voc-clustering)
+              - [VOC data exploration](#voc-data-exploration)
+              - [Transformation and
+                scaling](#transformation-and-scaling)
+              - [Correlations](#correlations)
+              - [Clustering](#clustering)
 
 ``` r
 library(tidyverse)
@@ -484,4 +492,91 @@ log_vocs <- voc_data %>%
 
 st_log_vocs <- log_vocs %>% 
   mutate_at(vars(starts_with("m")), scale)
+
+long_vocs <- st_log_vocs %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
 ```
+
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
+
+This is how the transformed data looks like now:
+
+``` r
+long_vocs %>% 
+  ggplot(aes(x = voc, y = conc)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+![](monster_master_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+
+``` r
+long_vocs %>% 
+  ggplot(aes(x = voc, y = conc, fill = ssex)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+![](monster_master_files/figure-gfm/unnamed-chunk-25-2.png)<!-- -->
+
+#### Correlations
+
+``` r
+all_corr <- cor(st_log_vocs[,4:78])
+corrplot(all_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, order = "hclust", mar=c(0,0,2,0))
+```
+
+![](monster_master_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+
+#### Clustering
+
+Number of clusters is kind of arbitrary
+
+``` r
+voc_dist <- hclust(dist(all_corr))
+plot(voc_dist)
+rect.hclust(voc_dist, k =15)
+```
+
+![](monster_master_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+
+Using the clustering to create a new data frame:
+
+``` r
+voc_clusters <- data.frame(clust = cutree(voc_dist, k = 15)) %>% 
+  rownames_to_column(var = "voc")
+
+long_vocs %>% 
+  left_join(voc_clusters) %>% 
+  group_by(sampid, clust, famid, ssex) %>% 
+  summarise(voc_value = mean(conc)) %>% 
+  mutate(voc_clust = str_pad(clust, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) %>% 
+  ungroup() %>% 
+  select(-clust) -> clustered_long_vocs
+```
+
+    ## Warning: Column `voc` joining factor and character vector, coercing into
+    ## character vector
+
+``` r
+clustered_long_vocs %>% 
+  spread(key = voc_clust, value = voc_value) -> clustered_voc_data
+```
+
+``` r
+clustered_long_vocs %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, fill = ssex)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+![](monster_master_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->

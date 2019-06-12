@@ -3,6 +3,7 @@ title: "Monster master: we are doing everything here"
 output: 
   github_document:
     toc: true
+    toc_depth: 4
 ---
 
 ```{r setup, include=FALSE}
@@ -369,5 +370,77 @@ log_vocs <- voc_data %>%
 st_log_vocs <- log_vocs %>% 
   mutate_at(vars(starts_with("m")), scale)
 
+long_vocs <- st_log_vocs %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
 ```
+
+This is how the transformed data looks like now:
+
+```{r fig.width=24}
+
+long_vocs %>% 
+  ggplot(aes(x = voc, y = conc)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+
+long_vocs %>% 
+  ggplot(aes(x = voc, y = conc, fill = ssex)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+  
+```
+
+#### Correlations
+
+```{r}
+all_corr <- cor(st_log_vocs[,4:78])
+corrplot(all_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, order = "hclust", mar=c(0,0,2,0))
+```
+
+#### Clustering
+
+Number of clusters is kind of arbitrary
+
+```{r}
+voc_dist <- hclust(dist(all_corr))
+plot(voc_dist)
+rect.hclust(voc_dist, k =15)
+```
+
+Using the clustering to create a new data frame:
+
+```{r}
+
+voc_clusters <- data.frame(clust = cutree(voc_dist, k = 15)) %>% 
+  rownames_to_column(var = "voc")
+
+long_vocs %>% 
+  left_join(voc_clusters) %>% 
+  group_by(sampid, clust, famid, ssex) %>% 
+  summarise(voc_value = mean(conc)) %>% 
+  mutate(voc_clust = str_pad(clust, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) %>% 
+  ungroup() %>% 
+  select(-clust) -> clustered_long_vocs
+
+clustered_long_vocs %>% 
+  spread(key = voc_clust, value = voc_value) -> clustered_voc_data
+```
+
+```{r}
+clustered_long_vocs %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, fill = ssex)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
 
