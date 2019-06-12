@@ -59,7 +59,7 @@ traits %>%
   facet_wrap( ~ trait, scales = "free")
 ```
 
-
+#Scaling volatile data
 ```{r}
 vocs %>% 
   select(-c(famid, sampid, ssex)) %>%
@@ -68,19 +68,23 @@ vocs %>%
   ggplot(aes(x = standardized_values, y = ..density..)) +
   geom_histogram(na.rm = TRUE, fill = "#8766a8") +
   facet_wrap( ~ trait, scales = "free")
+
 ```
 
-
+#Scaling traits 
 ```{r}
 traits %>% 
   mutate_at(c(5:15), scale) -> scaled_traits
 
+#Combining volatile and life history data into one master file. Scaling can occur prior to combining because the function works row by row
 master <- full_join(x = scaled_traits, y = vocs)
 ```
 
-# JUST TRAITS
+# JUST TRAITS DATA
 
 ```{r}
+
+#FEMALE TRAIT COVARIANCE MATRIX
 scaled_traits %>% 
   filter(ssex == "f") %>% 
   group_by(famid) %>% 
@@ -100,10 +104,15 @@ cov_mat_fems %>%
   scale_fill_viridis_c(option = "magma") +
   theme(axis.text.x = element_text(angle = 90))
 
-
+#Correlation matrix females life history traits
+cov_mat_fems <- as.matrix(cov_mat_fems)
+cor_mat_fems <- (cov2cor(cov_mat_fems))
+females_life <- corrplot(cor_mat_fems)
 ```
 
 ```{r}
+
+#MALE TRAIT COVARIANCE MATRIX
 scaled_traits %>% 
   filter(ssex == "m") %>% 
   group_by(famid) %>% 
@@ -123,12 +132,17 @@ cov_mat_male %>%
   scale_fill_viridis_c() +
   theme(axis.text.x = element_text(angle = 90))
 
-
+#Correlation matrix males life history traits
+cov_mat_male <- as.matrix(cov_mat_male)
+cor_mat_male <- (cov2cor(cov_mat_male))
+Males_life <- corrplot(cor_mat_male)
 ```
 
 
 
 ```{r}
+
+#ALL TRAIT DATA COVARIANCE MATRIX but not seperated by sex. 
 scaled_traits %>% 
   group_by(famid) %>% 
   mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
@@ -147,12 +161,18 @@ cov_mat_all %>%
   scale_fill_viridis_c(option = "plasma") +
   theme(axis.text.x = element_text(angle = 90))
 
+#Correlation matrix for all life history traits
+cov_mat_all <- as.matrix(cov_mat_all)
+cor_mat_all <- (cov2cor(cov_mat_all))
+Males_life <- corrplot(cor_mat_all)
 
 ```
 
 
 
 ```{r}
+
+#All traits by filtering with only families shared between males and females. Plotted males vs females
 scaled_traits %>% 
   filter(ssex == "m") %>% 
   group_by(famid) %>% 
@@ -171,10 +191,10 @@ scaled_traits %>%
   filter(famid %in% male_data$famid) -> fem_data
 
 # Use only the families that have both males and females
+test_cov <- cov(male_data[,2:12], fem_data[,2:12], use = "pairwise.complete.obs")
+test_cor <- cor(male_data[,2:12], fem_data[,2:12])
 
-
-test_cov <- cov(male_data[,2:12], fem_data[,2:12], use = "na.or.complete")
-
+#All traits filtered males v females covariance
 test_cov %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "x") %>% 
@@ -183,7 +203,14 @@ test_cov %>%
   geom_tile() +
   theme(axis.text.x = element_text(angle = 90))
 
-
+#All traits filtered males v females correlation
+test_cor %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90))
 
 ```
 
@@ -192,6 +219,8 @@ test_cov %>%
 # Just VOCs
 
 ```{r}
+
+#Female volatiles covariance plot
 vocs %>% 
   filter(ssex == "f") %>% 
   group_by(famid) %>% 
@@ -211,10 +240,16 @@ cov_mat_fems %>%
   scale_fill_viridis_c(option = "magma") +
   theme(axis.text.x = element_text(angle = 90))
 
+#Female volatiles correlation plot
+cov_mat_fems <- as.matrix(cov_mat_fems)
+cor_mat_fems <- (cov2cor(cov_mat_fems))
+females_voc <- corrplot(cor_mat_fems)
 
 ```
 
 ```{r}
+
+#Male volatile covariance matrix
 vocs %>% 
   filter(ssex == "m") %>% 
   group_by(famid) %>% 
@@ -234,12 +269,17 @@ cov_mat_male %>%
   scale_fill_viridis_c() +
   theme(axis.text.x = element_text(angle = 90))
 
+#Male volatile correlation matrix
+cov_mat_male <- as.matrix(cov_mat_male)
+cor_mat_male <- (cov2cor(cov_mat_male))
+males_voc <- corrplot(cor_mat_male)
 
 ```
 
 
 
 ```{r}
+#All data not female vs male
 vocs %>% 
   group_by(famid) %>% 
   mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
@@ -258,16 +298,21 @@ cov_mat_all %>%
   scale_fill_viridis_c(option = "plasma") +
   theme(axis.text.x = element_text(angle = 90))
 
-
+#Male volatile correlation matrix
+cov_mat_all <- as.matrix(cov_mat_all)
+cor_mat_all <- (cov2cor(cov_mat_all))
+all_VOC <- corrplot(cor_mat_all)
 ```
 
 
 
 ```{r, eval = FALSE}
+
+#All vocs filtered by those with Male and female families. Plot M v F
 vocs %>% 
   filter(ssex == "m") %>% 
   group_by(famid) %>% 
-  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  mutate_at(c(4:18), mean, na.rm = TRUE) %>% 
   ungroup() %>% 
   select(-c(sampid, ssex)) %>% 
   distinct() -> male_data
@@ -275,7 +320,7 @@ vocs %>%
 vocs %>% 
   filter(ssex == "f") %>% 
   group_by(famid) %>% 
-  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  mutate_at(c(4:18), mean, na.rm = TRUE) %>% 
   ungroup() %>% 
   select(-c(sampid, ssex)) %>% 
   distinct() %>% 
@@ -287,7 +332,9 @@ fem_data %>%
   filter(famid %in% male_data$famid) -> fem_data
 
 test_cov <- cov(male_data[,2:16], fem_data[,2:16], use = "na.or.complete")
+test_cor <- cor(male_data[,2:16], fem_data[,2:16], use = "na.or.complete")
 
+#Male vs female covariance
 test_cov %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "x") %>% 
@@ -296,13 +343,22 @@ test_cov %>%
   geom_tile() +
   theme(axis.text.x = element_text(angle = 90))
 
+#Male vs female correlation
+test_cor %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90))
 
 
 ```
 
-# ALL STUFF
+# Combined life history and volatile data
 
 ```{r}
+#Female data combined
 master %>% 
   filter(ssex == "f") %>% 
   group_by(famid) %>% 
@@ -314,6 +370,7 @@ master %>%
   cov(use = "na.or.complete") %>% 
   as.data.frame() -> cov_mat_fems
 
+#Female all covariance
 cov_mat_fems %>% 
   rownames_to_column(var = "x") %>% 
   gather(key = "y", value = "value", -x) %>% 
@@ -322,10 +379,16 @@ cov_mat_fems %>%
   scale_fill_viridis_c(option = "magma") +
   theme(axis.text.x = element_text(angle = 90))
 
+#Female all correlation
+cov_mat_all <- as.matrix(cov_mat_all)
+cor_mat_all <- (cov2cor(cov_mat_all))
+all_VOC <- corrplot(cor_mat_all)
 
 ```
 
 ```{r}
+
+#All data for males
 master %>% 
   filter(ssex == "m") %>% 
   group_by(famid) %>% 
@@ -337,6 +400,7 @@ master %>%
   cov(use = "na.or.complete") %>% 
   as.data.frame() -> cov_mat_male
 
+#Covariance matrix for males for all data
 cov_mat_male %>% 
   rownames_to_column(var = "x") %>% 
   gather(key = "y", value = "value", -x) %>% 
@@ -345,12 +409,17 @@ cov_mat_male %>%
   scale_fill_viridis_c() +
   theme(axis.text.x = element_text(angle = 90))
 
+#male all correlation
+cov_mat_male <- as.matrix(cov_mat_male)
+cor_mat_male <- (cov2cor(cov_mat_male))
+all_male <- corrplot(cor_mat_male)
 
 ```
 
 
 
 ```{r}
+#All data but not filtered by sex
 master %>% 
   group_by(famid) %>% 
   mutate_at(c(5:30), mean, na.rm = TRUE) %>% 
@@ -361,6 +430,7 @@ master %>%
   cov(use = "na.or.complete") %>% 
   as.data.frame() -> cov_mat_all
 
+#All data covariance
 cov_mat_all %>% 
   rownames_to_column(var = "x") %>% 
   gather(key = "y", value = "value", -x) %>% 
@@ -369,12 +439,19 @@ cov_mat_all %>%
   scale_fill_viridis_c(option = "plasma") +
   theme(axis.text.x = element_text(angle = 90))
 
+#all data correlation
+cov_mat_all <- as.matrix(cov_mat_all)
+cor_mat_all <- (cov2cor(cov_mat_all))
+all_alle <- corrplot(cor_mat_all)
+
 
 ```
 
 
 
 ```{r eval = FALSE}
+
+#ALl data filtered by males v females
 master %>% 
   filter(ssex == "m") %>% 
   group_by(famid) %>% 
@@ -393,9 +470,9 @@ master %>%
   filter(famid %in% male_data$famid) -> fem_data
 
 # Use only the families that have both males and females
-
-
+#Covariance for males v female for all data
 test_cov <- cov(male_data[,2:12], fem_data[,2:12], use = "na.or.complete")
+test_cor <- cor(male_data[,2:12], fem_data[,2:12], use = "na.or.complete")
 
 test_cov %>% 
   as.data.frame() %>% 
@@ -405,7 +482,14 @@ test_cov %>%
   geom_tile() +
   theme(axis.text.x = element_text(angle = 90))
 
-
+#Correlation for all data for males vs females
+test_cor %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 90))
 
 ```
 
