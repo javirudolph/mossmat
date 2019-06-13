@@ -72,6 +72,7 @@ vocs %>%
 ```
 
 #Scaling traits 
+We only scaled the traits for all correlation and covariance matrices. We did not transform any of the data.
 ```{r}
 traits %>% 
   mutate_at(c(5:15), scale) -> scaled_traits
@@ -81,6 +82,11 @@ master <- full_join(x = scaled_traits, y = vocs)
 ```
 
 # JUST TRAITS DATA
+-We could potentially combine the leaf data into one varialbe. 
+-Leaf length is highly correlataed with leaf area and perimeter.
+-Trade offs for days till gametophores and number of gametophores. The longer it takes you to produce gametophores the less you produce
+-Slight covariance between leaf area and circularity.
+-Very slight covariance between days till gam were produced and leaf area
 ```{r}
 mynamestheme <- theme(plot.title = element_text(family = "Arial", face = "bold", size = (20)), 
                  legend.title = element_text(colour = "black",  face = "bold.italic", family = "Arial"), 
@@ -112,6 +118,7 @@ cov_mat_fems %>%
 ```
 
 Correlation matrix females life history traits
+
 ```{r}
 cov_mat_fems <- as.matrix(cov_mat_fems)
 cor_mat_fems <- (cov2cor(cov_mat_fems))
@@ -121,6 +128,11 @@ females_life <- corrplot(cor_mat_fems, title= "Correlation matrix females life h
 ```
 
 MALE TRAIT COVARIANCE MATRIX
+-Leaf measurements covary with area and perimeter
+-reproductive measurement negattively correlated with reproductive perimeter.
+-Growth measurements and reproductive traits do not correlate the same with reproductive traits while the growth measurements are all correlated.
+  -positive with circularity
+  -negative with perimeter
 ```{r}
 scaled_traits %>% 
   filter(ssex == "m") %>% 
@@ -150,6 +162,8 @@ cov_mat_male <- as.matrix(cov_mat_male)
 cor_mat_male <- (cov2cor(cov_mat_male))
 Males_life <- corrplot(cor_mat_male, title= "Correlation matrix males life history traits", tl.col = "black", mar=c(0,2,1,1))
 ```
+
+
 
 #ALL TRAIT DATA COVARIANCE MATRIX but not seperated by sex.
 ```{r}
@@ -225,6 +239,8 @@ test_cov %>%
 ```
 
 All traits filtered males v females correlation
+-Lots of interesting data. Now how to explain it...
+
 ```{r}
 
 test_cor %>% 
@@ -422,6 +438,14 @@ cov_mat_fems %>%
   scale_fill_viridis_c(option = "magma") +
   theme(axis.text.x = element_text(angle = 90))
 
+#To get only the upper triangle
+library(reshape)
+  get_upper_tri <- function(cov_mat_fems){
+    cov_mat_fems[lower.tri(cov_mat_fems)]<- NA
+    return(cov_mat_fems)
+  }
+upper_tri <- get_upper_tri(cov_mat_fems)
+upper_tri
 
 ```
 
@@ -504,9 +528,7 @@ all_alle <- corrplot(cor_mat_all)
 
 #ALl data filtered by males v females
 Covariance for males v female for all data
-```{r eval = FALSE}
-
-
+```{r}
 master %>% 
   filter(ssex == "m") %>% 
   group_by(famid) %>% 
@@ -526,8 +548,8 @@ master %>%
 
 # Use only the families that have both males and females
 #Covariance for males v female for all data
-test_cov <- cov(male_data[,2:12], fem_data[,2:12], use = "na.or.complete")
-test_cor <- cor(male_data[,2:12], fem_data[,2:12], use = "na.or.complete")
+test_cov <- cov(male_data[,2:27], fem_data[,2:27], use = "na.or.complete")
+test_cor <- cor(male_data[,2:27], fem_data[,2:27], use = "na.or.complete")
 
 test_cov %>% 
   as.data.frame() %>% 
@@ -538,7 +560,7 @@ test_cov %>%
   ggtitle("Covariance matrix of all data in males v females")+
   mynamestheme+
   labs(x="Males", y="Females")+
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 90)) 
 
 
 ```
