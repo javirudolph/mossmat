@@ -1,6 +1,8 @@
 ---
-title: "Evolution Talk: figures"
-output: 
+title: "Evolution Talk: Figures"
+author: "Javiera Rudolph"
+date: "6/13/2019"
+output:
   github_document:
     toc: true
     toc_depth: 4
@@ -65,7 +67,7 @@ vocs %>%
   labs(x = "VOC ID",
        y = "Log transformed and scaled concentration") +
   theme(axis.text.x = element_text(angle = 90))
-  
+
 ```
 
 
@@ -94,47 +96,38 @@ master %>%
 
 ```
 
+
 ```{r}
 # Males - correlation
-cor_males <- rcorr(as.matrix(male_data[,2:29]))
+cor_males <- cor(male_data[,2:29], use = "na.or.complete")
 # Females - correlation
-cor_fem <- rcorr(as.matrix(fem_data[,2:29]))
+cor_fem <- cor(fem_data[,2:29], use = "na.or.complete")
 ```
 
 
-
 ```{r fig.width=9, fig.height=9}
-par(mfrow = c(1,2))
-corrplot(cor_males$r, type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .4)
+corrplot(cor_males, title = "Males", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .4, mar = c(0,0,2,0))
 
-corrplot(cor_fem$r, type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .4)
+corrplot(cor_fem, title = "Females", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .4, mar = c(0,0,2,0))
 
 ```
 
 ## males on one axis, females on the other
+```{r}
+# Make sure you have the same number of families to get this data
+# Seems like they both have 44
+
+sex_cor <- cor(male_data[,2:29], fem_data[,2:29], use = "na.or.complete")
+corrplot(sex_cor, title = "Males on X, Females on Y", tl.col = "black", tl.srt = 60, tl.cex = .4, mar = c(0,0,2,0))
+
+
+```
+
+
+
 ### Highlight the diagonal with transparencies
 ## Subtracted matrix
 
 # Relationship between VOC clusters and the life history traits such as leafs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

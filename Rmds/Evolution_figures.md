@@ -1,5 +1,7 @@
-Evolution Talk: figures
+Evolution Talk: Figures
 ================
+Javiera Rudolph
+6/13/2019
 
   - [VOCs data](#vocs-data)
       - [Correlation matrix of all the vocs with the
@@ -27,10 +29,9 @@ Evolution Talk: figures
 We wanted to see if some compounds could be potentially related. We ran
 a correlation. The grey ‘x’ in the figure shows insignificant
 correlations. We used a hierarchical clustering algorithm to group the
-VOCs in
-clusters.
+VOCs in clusters.
 
-![](Evolution_pres_figures_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 ### MANOVA for vocs
 
@@ -200,15 +201,17 @@ clusters.
 From the MANOVA results, all of these clusters show sexual
 dimorphism.
 
-![](Evolution_pres_figures_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
 # Correlation matrices for all traits
 
 ## Side by side males and females
 
-![](Evolution_pres_figures_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->![](Evolution_figures_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
 
 ## males on one axis, females on the other
+
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ### Highlight the diagonal with transparencies
 
