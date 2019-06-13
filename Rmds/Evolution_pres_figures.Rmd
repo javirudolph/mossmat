@@ -26,6 +26,56 @@ theme_set(theme_bw())
 master <- readRDS("cleandata/clean_master.RDS")
 ```
 
+# VOCs data
+## Correlation matrix of all the vocs with the clusters
+
+We wanted to see if some compounds could be potentially related. We ran a correlation. The grey 'x' in the figure shows insignificant correlations. We used a hierarchical clustering algorithm to group the VOCs in clusters.
+
+```{r fig.width=10, fig.height=10}
+cor_res <- readRDS("cleandata/data_for_figs/voc_correlation_data.RDS")
+corrplot(cor_res$r, p.mat = cor_res$P, sig.level = 0.001, insig = "pch", tl.col = "black", tl.srt = 60, tl.cex = .4, order = "hclust", pch.cex = 0.8, pch.col = "#43484f", addrect = 17)
+```
+
+### MANOVA for vocs
+```{r}
+vocs <- master[,c(1, 3, 16:32)] %>% 
+  drop_na()
+
+vocs.manova <- manova(cbind(clust_01, clust_02, clust_03, clust_04,
+                            clust_05, clust_06, clust_07, clust_08,
+                            clust_09, clust_10, clust_11, clust_12,
+                            clust_13, clust_14, clust_15, clust_16,
+                            clust_17) ~ famid + ssex + famid:ssex, data = vocs)
+
+sum.vocs.manova <- summary(vocs.manova)
+sum.vocs.manova
+summary.aov(vocs.manova)
+```
+
+
+## Cluster boxplots for males and females
+From the MANOVA results, all of these clusters show sexual dimorphism.
+
+```{r}
+vocs %>% 
+  gather(key = "voc_clust", value = "voc_value", -c(famid, ssex)) %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, fill = ssex)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+  
+```
+
+
+
+# Correlation matrices for all traits
+## Side by side males and females
+## males on one axis, females on the other
+### Highlight the diagonal with transparencies
+## Subtracted matrix
+
+# Relationship between VOC clusters and the life history traits such as leafs
 
 
 
