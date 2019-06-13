@@ -578,7 +578,7 @@ test_cov %>%
 Correlation for all data for males vs females
 ```{r}
 #Correlation for all data for males vs females
-cor <- test_cor %>% 
+test_cor %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "x") %>% 
   gather(key = "y", value = "value", -x) %>% 
@@ -589,16 +589,7 @@ cor <- test_cor %>%
   labs(x="Males", y="Females")+
   scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
   theme(axis.text.x = element_text(angle = 90))
-cor
 
-
-  get_upper_tri <- function(cor){
-    cor[lower.tri(cor)]<- NA
-    return(cor)
-  }
-upper_tri <- get_upper_tri(cor)
-upper_tri
-```
 
 
 
