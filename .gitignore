@@ -47,4 +47,5 @@ rsconnect/
 
 !LK_master.csv
 .Rproj.user
+.DS_Store
 
