@@ -65,7 +65,7 @@ Scaling traits
 JUST TRAITS DATA
 ================
 
-FEMALE TRAIT COVARIANCE MATRIX ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-7-1.png)
+![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-7-1.png)
 
 Correlation matrix females life history traits ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-8-1.png)
 
@@ -141,5 +141,3 @@ ALl data filtered by males v females
 Covariance for males v female for all data
 
 Correlation for all data for males vs females ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-30-1.png)
-
-Correlation using only the females that have both males and females ![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-31-1.png)![](G_mat_brute_files/figure-markdown_github/unnamed-chunk-31-2.png)
