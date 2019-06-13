@@ -17,7 +17,8 @@ Javiera Rudolph
         other](#males-on-one-axis-females-on-the-other)
           - [Highlight the diagonal with
             transparencies](#highlight-the-diagonal-with-transparencies)
-      - [Subtracted matrix](#subtracted-matrix)
+              - [Option 1](#option-1)
+              - [Option 2](#option-2)
   - [Relationship between VOC clusters and the life history traits such
     as
     leafs](#relationship-between-voc-clusters-and-the-life-history-traits-such-as-leafs)
@@ -215,6 +216,19 @@ dimorphism.
 
 ### Highlight the diagonal with transparencies
 
-## Subtracted matrix
+To get fancy with these plots we need to switch over to ggplot.
+
+#### Option 1
+
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+#### Option 2
+
+I think the transparencies are misleading because it makes you think
+that there is no correlation…
+
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+\#\# Subtracted
+matrix
 
 # Relationship between VOC clusters and the life history traits such as leafs

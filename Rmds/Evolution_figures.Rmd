@@ -126,6 +126,57 @@ corrplot(sex_cor, title = "Males on X, Females on Y", tl.col = "black", tl.srt =
 
 
 ### Highlight the diagonal with transparencies
+To get fancy with these plots we need to switch over to ggplot.
+
+#### Option 1
+ 
+```{r}
+
+order_variables <- c(sex_cor %>% 
+  as.data.frame() %>% 
+  names())
+
+
+sex_cor %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "males") %>% 
+  mutate(males = factor(males, levels = order_variables)) %>% 
+  gather(key = "females", value = "trait", -males) %>% 
+  mutate(females = factor(females, levels = order_variables)) %>% 
+  mutate(diag = males == females) %>%
+  ggplot(aes(x = males, y = females, fill = trait, color = diag)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000") +
+  scale_color_manual(values = c("white", "black")) +
+  guides(color = 'none') +
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+#### Option 2
+I think the transparencies are misleading because it makes you think that there is no correlation... 
+
+```{r}
+
+order_variables <- c(sex_cor %>% 
+  as.data.frame() %>% 
+  names())
+
+
+sex_cor %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "males") %>% 
+  mutate(males = factor(males, levels = order_variables)) %>% 
+  gather(key = "females", value = "trait", -males) %>% 
+  mutate(females = factor(females, levels = order_variables)) %>% 
+  mutate(diag = as.numeric(males == females)) %>% 
+  ggplot(aes(x = males, y = females, fill = trait, alpha = diag)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000") +
+  guides(alpha = 'none') +
+  theme(axis.text.x = element_text(angle = 90))
+
+```
 ## Subtracted matrix
 
 # Relationship between VOC clusters and the life history traits such as leafs
