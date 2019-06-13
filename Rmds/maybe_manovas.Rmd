@@ -8,7 +8,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 9, fig.height = 9)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 6, fig.height = 6)
 
 ```
 
@@ -79,3 +79,132 @@ e.mat %>%
   coord_equal()+
   geom_abline(slope = 1)
 ```
+
+
+## VOCs
+
+```{r}
+vocs <- master[,c(1,3, 16:32)] %>% 
+  drop_na()
+
+vocs.manova <- manova(cbind(clust_01, clust_02, clust_03, clust_04,
+                            clust_05, clust_06, clust_07, clust_08,
+                            clust_09, clust_10, clust_11, clust_12,
+                            clust_13, clust_14, clust_15, clust_16,
+                            clust_17) ~ famid + ssex + famid:ssex, data = vocs)
+
+sum.vocs.manova <- summary(vocs.manova)
+sum.vocs.manova
+```
+
+
+Which ones?
+```{r}
+summary.aov(vocs.manova)
+```
+
+Visualize H matrix
+
+```{r}
+h.mat <- sum.vocs.manova$SS[1]$famid
+
+h.mat %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_equal() +
+  geom_abline(slope = 1)
+```
+
+
+Visualize E matrix
+
+```{r}
+e.mat <- sum.vocs.manova$SS[2]$ssex
+
+e.mat %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_equal()+
+  geom_abline(slope = 1)
+```
+
+
+## Can you do both?
+
+
+```{r}
+all.manova <- master %>% 
+  drop_na()
+
+master.manova <- manova(cbind(repro, area_wk3, perim_wk3, circ_wk3, perim_rate, area_rate, days21, days_gam, leaf_length, leaf_area, leaf_perim, clust_01, clust_02, clust_03, clust_04,clust_05, clust_06, clust_07, clust_08,clust_09, clust_10, clust_11, clust_12,clust_13, clust_14, clust_15, clust_16,clust_17) ~ famid + ssex + famid:ssex, data = all.manova)
+
+sum.master.manova <- summary(master.manova)
+sum.master.manova
+```
+
+
+Which ones?
+```{r}
+summary.aov(master.manova)
+```
+
+Visualize Family matrix
+
+```{r}
+h.mat <- sum.master.manova$SS[1]$famid
+
+h.mat %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_equal() +
+  geom_abline(slope = 1)
+```
+
+
+Visualize Ssex
+
+```{r}
+e.mat <- sum.master.manova$SS[2]$ssex
+
+e.mat %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_equal()+
+  geom_abline(slope = 1)
+```
+
+```{r}
+d.mat <- sum.master.manova$SS[3]$`famid:ssex`
+
+d.mat %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_equal()+
+  geom_abline(slope = 1)
+```
+
