@@ -177,7 +177,38 @@ sex_cor %>%
   theme(axis.text.x = element_text(angle = 90))
 
 ```
+
 ## Subtracted matrix
+
+```{r}
+# If you want to consider the males subtracted from female matrices
+# From the correlation matrices
+
+minus_mat <- cor_males - cor_fem
+corrplot(minus_mat, type = "upper") # you can do this with corrplot
+
+```
+
+Also can do it with ggplot
+```{r}
+order_variables <- c(minus_mat %>% 
+  as.data.frame() %>% 
+  names())
+
+
+minus_mat %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "males") %>% 
+  mutate(males = factor(males, levels = order_variables)) %>% 
+  gather(key = "females", value = "trait", -males) %>% 
+  mutate(females = factor(females, levels = order_variables)) %>% 
+  ggplot(aes(x = males, y = females, fill = trait)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  #scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
 
 # Relationship between VOC clusters and the life history traits such as leafs
 

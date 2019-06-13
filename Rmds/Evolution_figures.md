@@ -19,6 +19,7 @@ Javiera Rudolph
             transparencies](#highlight-the-diagonal-with-transparencies)
               - [Option 1](#option-1)
               - [Option 2](#option-2)
+      - [Subtracted matrix](#subtracted-matrix)
   - [Relationship between VOC clusters and the life history traits such
     as
     leafs](#relationship-between-voc-clusters-and-the-life-history-traits-such-as-leafs)
@@ -228,7 +229,12 @@ I think the transparencies are misleading because it makes you think
 that there is no correlation…
 
 ![](Evolution_figures_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
-\#\# Subtracted
-matrix
+
+## Subtracted matrix
+
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+Also can do it with ggplot
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 # Relationship between VOC clusters and the life history traits such as leafs
