@@ -106,9 +106,9 @@ cor_fem <- cor(fem_data[,2:29], use = "na.or.complete")
 
 
 ```{r fig.width=9, fig.height=9}
-corrplot(cor_males, title = "Males", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .4, mar = c(0,0,2,0))
+corrplot(cor_males, title = "Males", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0))
 
-corrplot(cor_fem, title = "Females", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .4, mar = c(0,0,2,0))
+corrplot(cor_fem, title = "Females", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0))
 
 ```
 
@@ -118,7 +118,7 @@ corrplot(cor_fem, title = "Females", type = "upper", tl.col = "black", tl.srt = 
 # Seems like they both have 44
 
 sex_cor <- cor(male_data[,2:29], fem_data[,2:29], use = "na.or.complete")
-corrplot(sex_cor, title = "Males on X, Females on Y", tl.col = "black", tl.srt = 60, tl.cex = .4, mar = c(0,0,2,0))
+corrplot(sex_cor, title = "Males on X, Females on Y", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0))
 
 
 ```
