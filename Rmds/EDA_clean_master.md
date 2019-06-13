@@ -1,4 +1,4 @@
-Monster master: we are doing everything here
+EDA and creating a clean master data file
 ================
 
   - [Introduction](#introduction)
@@ -21,6 +21,7 @@ Monster master: we are doing everything here
                 scaling](#transformation-and-scaling)
               - [Correlations](#correlations)
               - [Clustering](#clustering)
+          - [Master dataframe](#master-dataframe)
 
 ``` r
 library(tidyverse)
@@ -28,7 +29,7 @@ library(vegan)
 library(plotly)
 library(corrplot)
 library(ggpubr)
-library(ggmosaic)
+library(Hmisc)
 
 theme_set(theme_bw())
 ```
@@ -78,8 +79,6 @@ trait_raw <- rawdata[,1:19] %>%
     
     ## Warning: NAs introduced by coercion
 
-Fixing some typos or data entry errors:
-
 ``` r
 # Fix a data entry error:
 # Check Github issue #5
@@ -93,6 +92,9 @@ trait_raw <- trait_raw[-which(trait_raw$sampid == "P_6_6_20"),]
 
 #### Leaf traits
 
+First, we visually check for outliers or values that may not make
+sense.
+
 ``` r
 # Leaf data averaging -----------------------------------------------------
 
@@ -104,18 +106,35 @@ trait_raw[,17:19] %>%
 
     ## Warning: Removed 56 rows containing non-finite values (stat_boxplot).
 
-![](monster_master_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 There are no clear outliers or errors, so these look ok to average and
-we create a new data frame with the leaf data.
+we create a new data frame with the leaf data. In cases where data for
+only one of the clones was available, we kept that value. For cases
+where data was available for both clones we averaged it.
 
 ``` r
 trait_raw[,c(2, 17:19),] %>% 
   group_by(sampid) %>% 
-  summarise_at(vars(starts_with("Leaf")), mean, na.rm = TRUE) -> leaf_data
+  summarise_at(vars(starts_with("Leaf")), mean, na.rm = TRUE) %>% 
+  mutate_at(vars(starts_with("Leaf")), list(~ as.numeric(ifelse(. == "NaN", "NA", .)))) -> leaf_data
 ```
 
+    ## Warning in ~as.numeric(ifelse(. == "NaN", "NA", .)): NAs introduced by
+    ## coercion
+
+    ## Warning in ~as.numeric(ifelse(. == "NaN", "NA", .)): NAs introduced by
+    ## coercion
+
+    ## Warning in ~as.numeric(ifelse(. == "NaN", "NA", .)): NAs introduced by
+    ## coercion
+
 #### Growth and development traits
+
+We do the same thing with these other traits and it is easy to identify
+three values that seem incorrect. These are in the area, circularity and
+perimeter
+rate.
 
 ``` r
 # Growth and Development traits -------------------------------------------
@@ -127,9 +146,7 @@ trait_raw[,10:16] %>%
   geom_boxplot()
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
-
-There are some crazy outliers here…
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ``` r
 outliers <- which(trait_raw$Avg_Area._Week_3>50)
@@ -147,9 +164,6 @@ trait_raw[outliers,]
     ## #   Avg_Days_til_Gam <dbl>, Leaf_Length_Average <dbl>,
     ## #   Leaf_Average_Area <dbl>, Leaf_perimeter_average <dbl>
 
-The error is in the decimal point for the area and
-circularity:
-
 ``` r
 trait_raw$Avg_Area._Week_3[outliers] <- trait_raw$Avg_Area._Week_3[outliers] / 1000
 trait_raw$Avg_Circularity_Week.3[outliers] <- trait_raw$Avg_Circularity_Week.3[outliers] / 1000
@@ -162,9 +176,11 @@ trait_raw[,10:16] %>%
   geom_boxplot()
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
-Looks better but, why are there negative values? seems like a typo
+These values had mistakes in the number of decimal places and included a
+typo making a value be negative. After adjusting these values, we check
+again for errors. The data looks ok now, so we can save the dataframe.
 
 ``` r
 negs <- which(trait_raw$Avg_Perimeter_Rate < 0)
@@ -198,9 +214,7 @@ trait_raw[,10:16] %>%
   geom_boxplot()
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
-
-Now it’s ok to get them as family averages:
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ``` r
 trait_raw[,c(2, 10:16)] %>% 
@@ -243,7 +257,7 @@ reprovar %>%
   geom_histogram()
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ### Clean trait data
 
@@ -278,12 +292,14 @@ traits %>%
   facet_wrap( ~ trait, scales = "free")
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 #### Histograms transformed trait data
 
-If we log transform the data and then scale it, the histograms look like
-this:
+If we log transform the data and then scale it, the following figure
+shows the histograms for all the variables. Since we have variables in
+different units, we will use the scaled traits for future analyses and
+models.
 
 ``` r
 names(traits)
@@ -313,7 +329,7 @@ scaled_traits %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-![](monster_master_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
 ## Volatile Organic Compounds
 
@@ -339,8 +355,9 @@ oldnames <- names(voc_raw)
 names(voc_raw)[5:94] <- stringr::str_trunc(oldnames[5:94], width = 6, side = "right", ellipsis = "")
 ```
 
-There was an issue with the notation in one of the compounds, so we are
-checking that now:
+There was an issue with the notation in one of the compounds, so we
+check that and fix the notation so that R can recognize the values as
+numbers.
 
 ``` r
 #str(voc_raw)
@@ -382,12 +399,17 @@ ggarrange(withMay30, woutMay30, nrow = 2)
 
     ## Warning: Removed 1 rows containing non-finite values (stat_boxplot).
 
-![](monster_master_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ### Using a 10% threshold
 
 We are only going to keep the compounds for which at least 10% of the
-samples have a value greater than zero.
+samples have a value greater than zero. According to Leslie, other
+sources use up to 40% of a threshold, however, we are interested in
+sexual dimorphism. That means that if there is a difference in compound
+production associated to the sex, then you automatically have only a 50%
+chance of producing that compound. Therefore, a 10 or 20% threshold is
+what would work for this project.
 
 ``` r
 voc_raw %>% 
@@ -441,7 +463,7 @@ long_voc_data %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 After looking at the data, the first thought is to log transform it. To
 check for any measurement outliers we might want to get rid of the
@@ -457,10 +479,11 @@ long_voc_data %>%
   scale_y_log10()
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 With the information, we can clean the data again and remove these
-outliers.
+outliers. Since the values are so small and below the machine’s
+detection threshold, they are classified as zero.
 
 ``` r
 # Making these outliers be zero
@@ -501,58 +524,75 @@ long_vocs <- st_log_vocs %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-This is how the transformed data looks like now:
+This is how the transformed data looks like now, with a visual
+differentiation between males and females. Recall that the data for VOCs
+here has been log transfomed and scaled.
 
 ``` r
-long_vocs %>% 
+ggarrange(long_vocs %>% 
   ggplot(aes(x = voc, y = conc)) +
   geom_boxplot(notch = TRUE, alpha = 0.2) +
   labs(x = "VOC ID",
        y = "Log transformed and scaled concentration") +
-  theme(axis.text.x = element_text(angle = 90))
-```
-
-![](monster_master_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
-
-``` r
-long_vocs %>% 
+  theme(axis.text.x = element_text(angle = 90)),
+  long_vocs %>% 
   ggplot(aes(x = voc, y = conc, fill = ssex)) +
   geom_boxplot(notch = TRUE, alpha = 0.2) +
   labs(x = "VOC ID",
        y = "Log transformed and scaled concentration") +
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 90)), nrow = 2)
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-25-2.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
 
 #### Correlations
 
+The point of running these correlations is to get an idea of which
+compounds might show up together or the opposite. We are trying to
+reduce our dataset and avoid inputing 75 dependent variables into a
+model with two explanatory variables. From the correlation matrix we can
+see that some compounds tend to be found in clusters. We can use this
+information to group the compounds and get a reduced dataset.
+
 ``` r
-all_corr <- cor(st_log_vocs[,4:78])
-corrplot(all_corr, method = "circle", type = "upper", tl.col = "black", tl.srt = 45, tl.cex = .3, order = "hclust", mar=c(0,0,2,0))
+cor_data <- as.matrix(st_log_vocs[,4:78])
+
+cor_res <- rcorr(x = cor_data, type = "pearson")
+
+corrplot(cor_res$r, p.mat = cor_res$P, sig.level = 0.001, insig = "pch", tl.col = "black", tl.srt = 60, tl.cex = .4, order = "hclust", pch.cex = 0.8, pch.col = "#43484f", addrect = 17)
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
 #### Clustering
 
-Number of clusters is kind of arbitrary
+Haven’t found a good reasoning to come up with a specific number of
+clusters. However, by making these clusters using the correlation
+matrix, we can see how variables (in this case compounds) are grouped
+together.
 
 ``` r
-voc_dist <- hclust(dist(all_corr))
-plot(voc_dist)
-rect.hclust(voc_dist, k =15)
+d <- as.dist(1-cor_res$r)
+hr <- hclust(d)
+#names(hr)
+plot(hr, hang = -1)
+rect.hclust(hr, h = max(hr$height)/2)
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
 
-Using the clustering to create a new data frame:
+Using the clustering to create a new data frame **Making clusters using
+the original raw data and then transforming and scaling, after the
+clusters are
+formed**
 
 ``` r
-voc_clusters <- data.frame(clust = cutree(voc_dist, k = 15)) %>% 
-  rownames_to_column(var = "voc")
+# This uses the original, raw untransformed data to get the means by cluster
+voc_clusters <- data.frame(clust = cutree(hr, h = max(hr$height)/2)) %>% 
+  rownames_to_column(var = "voc") 
 
-long_vocs %>% 
+
+long_voc_data %>% 
   left_join(voc_clusters) %>% 
   group_by(sampid, clust, famid, ssex) %>% 
   summarise(voc_value = mean(conc)) %>% 
@@ -568,10 +608,63 @@ long_vocs %>%
 ``` r
 clustered_long_vocs %>% 
   spread(key = voc_clust, value = voc_value) -> clustered_voc_data
+
+
+clustered_log_vocs <- clustered_voc_data %>% 
+  mutate_at(vars(starts_with("c")), list(~ log10(. + 1e-12)))
+
+clustered_st_log_vocs <- clustered_log_vocs %>% 
+  mutate_at(vars(starts_with("c")), scale)
+
+clustered_long_vocs <- clustered_st_log_vocs %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
 ```
+
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
 
 ``` r
 clustered_long_vocs %>% 
+  ggplot(aes(x = voc, y = conc, fill = ssex)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+**Making the clusters with the data that was already transformed and
+scaled** I think it makes more sense to use this one, since this is the
+data we actually used to create the clusters. Our correlations and
+everything else is based on this transformed data, so this is probably
+what we should use to create the new dataset of clustered
+VOCs.
+
+``` r
+# This one gets the clustered data by getting the mean using the transformed and scaled data.
+voc_clusters <- data.frame(clust = cutree(hr, h = max(hr$height)/2)) %>% 
+  rownames_to_column(var = "voc") 
+
+
+long_vocs %>% 
+  left_join(voc_clusters) %>% 
+  group_by(sampid, clust, famid, ssex) %>% 
+  summarise(voc_value = mean(conc)) %>% 
+  mutate(voc_clust = str_pad(clust, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) %>% 
+  ungroup() %>% 
+  select(-clust) -> clustered_long_vocs2
+```
+
+    ## Warning: Column `voc` joining factor and character vector, coercing into
+    ## character vector
+
+``` r
+clustered_long_vocs2 %>% 
+  spread(key = voc_clust, value = voc_value) -> clustered_voc_data2
+
+clustered_long_vocs2 %>% 
   ggplot(aes(x = voc_clust, y = voc_value, fill = ssex)) +
   geom_boxplot(notch = TRUE, alpha = 0.2) +
   labs(x = "VOC ID",
@@ -579,4 +672,97 @@ clustered_long_vocs %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-![](monster_master_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
+![](EDA_clean_master_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
+
+These are the clusters and the compounds in each cluster
+
+| Cluster | Compound |
+| ------: | :------- |
+|       1 | m30.99   |
+|       1 | m31.01   |
+|       1 | m41.03   |
+|       1 | m42.03   |
+|       1 | m43.01   |
+|       1 | m44.06   |
+|       1 | m45.03   |
+|       1 | m46.03   |
+|       1 | m46.06   |
+|       1 | m47.01   |
+|       1 | m47.98   |
+|       2 | m31.99   |
+|       2 | m32.99   |
+|       3 | m33.03   |
+|       3 | m34.02   |
+|       4 | m37.02   |
+|       4 | m39.03   |
+|       5 | m49.02   |
+|       5 | m49.05   |
+|       5 | m105\_F  |
+|       5 | m141.0   |
+|       6 | m49.99   |
+|       6 | m86.03   |
+|       7 | m55.03   |
+|       7 | m57.02   |
+|       7 | m59.04   |
+|       7 | m69.06   |
+|       7 | m87.04   |
+|       8 | m57.05   |
+|       8 | m62.02   |
+|       8 | m63.02   |
+|       8 | m71.03   |
+|       8 | m79.05   |
+|       8 | m83.05   |
+|       8 | m85.06   |
+|       8 | m89.05   |
+|       8 | m89.09   |
+|       8 | m97.00   |
+|       9 | m61.02   |
+|       9 | m99.08   |
+|       9 | m101.0   |
+|       9 | m106.0   |
+|       9 | m108.0   |
+|       9 | m109.0   |
+|       9 | m113.0   |
+|       9 | m115.0   |
+|       9 | m121.1   |
+|       9 | m124.0   |
+|       9 | m139.1   |
+|       9 | m143.0   |
+|      10 | m69.00   |
+|      11 | m73.03   |
+|      11 | m75.04   |
+|      11 | m77.05   |
+|      11 | m91.00   |
+|      11 | m93.06   |
+|      11 | m95.00   |
+|      11 | m149.0   |
+|      12 | m81.06   |
+|      12 | m135.1   |
+|      12 | m163.0   |
+|      13 | m98.00   |
+|      13 | m100.0   |
+|      13 | m119.0   |
+|      13 | m125.0   |
+|      14 | m103.1   |
+|      14 | m107.0   |
+|      15 | m111.0   |
+|      15 | m127.0   |
+|      15 | m129.0   |
+|      15 | m130.0   |
+|      16 | m137.1   |
+|      16 | m150.0   |
+|      16 | m151.0   |
+|      17 | m204.0   |
+
+### Master dataframe
+
+This will create the master data frame that includes the lifehistory
+traits and the VOC clustered data. All of these are already log
+transformed and scaled.
+
+``` r
+clean_master <- full_join(scaled_traits, clustered_voc_data2) %>% 
+  mutate_at(c(5:32), as.numeric)
+
+saveRDS(clean_master, "cleandata/clean_master.RDS")
+```
