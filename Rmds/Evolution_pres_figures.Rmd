@@ -8,7 +8,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 12, fig.height = 4)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 
 ```
 
@@ -23,7 +23,8 @@ theme_set(theme_bw())
 ```
 
 ```{r}
-master <- readRDS("cleandata/clean_master.RDS")
+master <- readRDS("cleandata/clean_master.RDS") %>% 
+  dplyr::select(-raw_repro)
 ```
 
 # VOCs data
@@ -38,7 +39,7 @@ corrplot(cor_res$r, p.mat = cor_res$P, sig.level = 0.001, insig = "pch", tl.col 
 
 ### MANOVA for vocs
 ```{r}
-vocs <- master[,c(1, 3, 16:32)] %>% 
+vocs <- master[,c(1, 3, 15:31)] %>% 
   drop_na()
 
 vocs.manova <- manova(cbind(clust_01, clust_02, clust_03, clust_04,
@@ -56,7 +57,7 @@ summary.aov(vocs.manova)
 ## Cluster boxplots for males and females
 From the MANOVA results, all of these clusters show sexual dimorphism.
 
-```{r}
+```{r fig.width=12, fig.height=5}
 vocs %>% 
   gather(key = "voc_clust", value = "voc_value", -c(famid, ssex)) %>% 
   ggplot(aes(x = voc_clust, y = voc_value, fill = ssex)) +
@@ -71,6 +72,45 @@ vocs %>%
 
 # Correlation matrices for all traits
 ## Side by side males and females
+
+```{r}
+# Get the data frames for both males and females
+master %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(4:31), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() -> male_data
+
+master %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(4:31), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  filter(famid %in% male_data$famid) -> fem_data
+
+```
+
+```{r}
+# Males - correlation
+cor_males <- rcorr(as.matrix(male_data[,2:29]))
+# Females - correlation
+cor_fem <- rcorr(as.matrix(fem_data[,2:29]))
+```
+
+
+
+```{r fig.width=9, fig.height=9}
+par(mfrow = c(1,2))
+corrplot(cor_males$r, type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .4)
+
+corrplot(cor_fem$r, type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .4)
+
+```
+
 ## males on one axis, females on the other
 ### Highlight the diagonal with transparencies
 ## Subtracted matrix

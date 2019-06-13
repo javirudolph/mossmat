@@ -559,6 +559,7 @@ cor_data <- as.matrix(st_log_vocs[,4:78])
 
 cor_res <- rcorr(x = cor_data, type = "pearson")
 
+saveRDS(cor_res, "cleandata/data_for_figs/voc_correlation_data.RDS")
 corrplot(cor_res$r, p.mat = cor_res$P, sig.level = 0.001, insig = "pch", tl.col = "black", tl.srt = 60, tl.cex = .4, order = "hclust", pch.cex = 0.8, pch.col = "#43484f", addrect = 17)
 ```
 

@@ -20,20 +20,6 @@ Evolution Talk: figures
     as
     leafs](#relationship-between-voc-clusters-and-the-life-history-traits-such-as-leafs)
 
-``` r
-library(tidyverse)
-library(vegan)
-library(corrplot)
-library(ggpubr)
-library(Hmisc)
-
-theme_set(theme_bw())
-```
-
-``` r
-master <- readRDS("cleandata/clean_master.RDS")
-```
-
 # VOCs data
 
 ## Correlation matrix of all the vocs with the clusters
@@ -41,30 +27,12 @@ master <- readRDS("cleandata/clean_master.RDS")
 We wanted to see if some compounds could be potentially related. We ran
 a correlation. The grey ‘x’ in the figure shows insignificant
 correlations. We used a hierarchical clustering algorithm to group the
-VOCs in clusters.
-
-``` r
-cor_res <- readRDS("cleandata/data_for_figs/voc_correlation_data.RDS")
-corrplot(cor_res$r, p.mat = cor_res$P, sig.level = 0.001, insig = "pch", tl.col = "black", tl.srt = 60, tl.cex = .4, order = "hclust", pch.cex = 0.8, pch.col = "#43484f", addrect = 17)
-```
+VOCs in
+clusters.
 
 ![](Evolution_pres_figures_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
 ### MANOVA for vocs
-
-``` r
-vocs <- master[,c(1, 3, 16:32)] %>% 
-  drop_na()
-
-vocs.manova <- manova(cbind(clust_01, clust_02, clust_03, clust_04,
-                            clust_05, clust_06, clust_07, clust_08,
-                            clust_09, clust_10, clust_11, clust_12,
-                            clust_13, clust_14, clust_15, clust_16,
-                            clust_17) ~ famid + ssex + famid:ssex, data = vocs)
-
-sum.vocs.manova <- summary(vocs.manova)
-sum.vocs.manova
-```
 
     ##             Df  Pillai approx F num Df den Df    Pr(>F)    
     ## famid        1 0.13553   2.9051     17    315  0.000124 ***
@@ -73,10 +41,6 @@ sum.vocs.manova
     ## Residuals  331                                             
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-``` r
-summary.aov(vocs.manova)
-```
 
     ##  Response clust_01 :
     ##              Df  Sum Sq Mean Sq F value    Pr(>F)    
@@ -233,23 +197,16 @@ summary.aov(vocs.manova)
 
 ## Cluster boxplots for males and females
 
-From the MANOVA results, all of these clusters show sexual dimorphism.
-
-``` r
-vocs %>% 
-  gather(key = "voc_clust", value = "voc_value", -c(famid, ssex)) %>% 
-  ggplot(aes(x = voc_clust, y = voc_value, fill = ssex)) +
-  geom_boxplot(notch = TRUE, alpha = 0.2) +
-  labs(x = "VOC ID",
-       y = "Log transformed and scaled concentration") +
-  theme(axis.text.x = element_text(angle = 90))
-```
+From the MANOVA results, all of these clusters show sexual
+dimorphism.
 
 ![](Evolution_pres_figures_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
 # Correlation matrices for all traits
 
 ## Side by side males and females
+
+![](Evolution_pres_figures_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ## males on one axis, females on the other
 
