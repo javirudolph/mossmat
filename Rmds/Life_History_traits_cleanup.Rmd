@@ -1,0 +1,73 @@
+---
+title: "Cleaning life history data"
+author: "Leslie Kollar"
+date: "6/4/2019"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 14, fig.height = 6)
+
+```
+
+## Data cleaning for life history traits
+
+For cleaning the life histroy traits, our goals are to...
+  1.) scale the variables: mean=0, st=1
+  2.) Fix male vs female traits with blank values or just leave NAs.
+  3.) Figure out what to do with May 30th data
+  4.) Remove duplicates
+
+```{r libraries}
+library(tidyverse)
+library(vegan)
+library(plotly)
+library(corrplot)
+library(ggpubr)
+library(ggmosaic)
+```
+
+```{r dataload}
+#source("R/master_cleanup.R")
+data_traits <- read.csv("rawdata/LK_master.csv")
+traits <- data_traits[,7:19]
+str(traits)
+
+# We have #DIV/0! and #REF! in datasheet because of formulas...
+
+traits$Leaf_Length_Average   <- as.numeric(str_replace(traits$ Leaf_Length_Average, "#DIV/0!", "NA"))
+traits$Leaf_Average_Area   <- as.numeric(str_replace(traits$Leaf_Average_Area , "#DIV/0!", "NA"))
+traits$Leaf_perimeter_average   <- as.numeric(str_replace(traits$Leaf_perimeter_average , "#DIV/0!", "NA"))
+traits$Leaf_Length_Average   <- as.numeric(str_replace(traits$ Leaf_Length_Average, "#REF!", "NA"))
+traits$Leaf_Average_Area   <- as.numeric(str_replace(traits$Leaf_Average_Area , "#REF!", "NA"))
+traits$Leaf_perimeter_average   <- as.numeric(str_replace(traits$Leaf_perimeter_average , "#REF!", "NA"))
+
+#Filtering out rows with NAs because scale does not like NA.
+traits %>% 
+   filter_all(any_vars(is.na(.)))
+```
+
+Almost every sample has an NA somewhere in that row. Cannot scale if there are NA in data set.  
+
+# Scaling the variables: mean = 0, st = 1
+```{r}
+scale <- scale(traits)
+```
+
+# Fixing male and female traits blank values
+  I realized that the total number of buds and the number of buds per stem are literally the same measurement. We can merge these traits into on "reproducive units" column!
+  
+# May 30 data
+  When running the analyses I dont think we should include the May 30th data. The trait data for samples collected on May 30th is acurate and does not need to be removed however, if we are trying to compare samples with VOC data and life history trait data the May 30th samples will only have life history trait data. This may be something to discuss. 
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
