@@ -20,9 +20,9 @@ Javiera Rudolph
               - [Option 1](#option-1)
               - [Option 2](#option-2)
       - [Subtracted matrix](#subtracted-matrix)
-  - [Relationship between VOC clusters and the life history traits such
-    as
-    leafs](#relationship-between-voc-clusters-and-the-life-history-traits-such-as-leafs)
+  - [Relationship between VOC clusters and the life history
+    traits](#relationship-between-voc-clusters-and-the-life-history-traits)
+      - [Males](#males)
 
 # VOCs data
 
@@ -232,9 +232,24 @@ that there is no correlation…
 
 ## Subtracted matrix
 
+Basically, taking the trait correlation matrix for males and subtracting
+the values of the female correlation matrix. So, the result is not
+really a correlation matrix, it is showing differences in correlation
+coefficients between males and females.
+
 ![](Evolution_figures_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 Also can do it with ggplot
 ![](Evolution_figures_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
-# Relationship between VOC clusters and the life history traits such as leafs
+# Relationship between VOC clusters and the life history traits
+
+## Males
+
+1.  Cluster 6 and area at week 3
+    ![](Evolution_figures_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->![](Evolution_figures_files/figure-gfm/unnamed-chunk-13-2.png)<!-- -->![](Evolution_figures_files/figure-gfm/unnamed-chunk-13-3.png)<!-- -->
+
+Figure for
+males
+
+![](Evolution_figures_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->![](Evolution_figures_files/figure-gfm/unnamed-chunk-14-2.png)<!-- -->![](Evolution_figures_files/figure-gfm/unnamed-chunk-14-3.png)<!-- -->![](Evolution_figures_files/figure-gfm/unnamed-chunk-14-4.png)<!-- -->

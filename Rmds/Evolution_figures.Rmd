@@ -179,13 +179,14 @@ sex_cor %>%
 ```
 
 ## Subtracted matrix
+Basically, taking the trait correlation matrix for males and subtracting the values of the female correlation matrix. So, the result is not really a correlation matrix, it is showing differences in correlation coefficients between males and females.
 
-```{r}
+```{r fig.height=9, fig.width=9}
 # If you want to consider the males subtracted from female matrices
 # From the correlation matrices
 
 minus_mat <- cor_males - cor_fem
-corrplot(minus_mat, type = "upper") # you can do this with corrplot
+corrplot(minus_mat,  type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0), title = "Difference between males and females") # you can do this with corrplot
 
 ```
 
@@ -202,14 +203,101 @@ minus_mat %>%
   mutate(males = factor(males, levels = order_variables)) %>% 
   gather(key = "females", value = "trait", -males) %>% 
   mutate(females = factor(females, levels = order_variables)) %>% 
-  ggplot(aes(x = males, y = females, fill = trait)) +
+  mutate(big_cor = ifelse(abs(trait) >= 0.5, 1, 0)) %>% 
+  ggplot(aes(x = males, y = females, fill = big_cor)) +
   geom_tile() +
+  geom_abline(slope = 1, color = "white") +
   scale_fill_viridis_c() +
   #scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000") +
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 90)) +
+  coord_equal()
 ```
 
 
-# Relationship between VOC clusters and the life history traits such as leafs
+# Relationship between VOC clusters and the life history traits
+
+
+## Males
+
+1. Cluster 6 and area at week 3
+```{r}
+
+# 1. We can't do correlation. This is basically just a number, so we would need to use the raw data
+
+# 2. We can use the data by individuals or by family average. Since the correlation coefficient is what informed which traits/clusters to focus on, and the correlation coefficients were based on family means, then I would suggest using those same family means for the figures. 
+
+fem_data %>% 
+  ggplot(aes(x = clust_06, y = area_wk3)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+fem_data %>% 
+  ggplot(aes(x = clust_02, y = days_gam)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+fem_data %>% 
+  select(clust_02, leaf_length, leaf_area, leaf_perim) %>% 
+  gather(key = "leaf_trait", value = "value", -clust_02) %>% 
+  ggplot(aes(x = clust_02, y = value)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~leaf_trait)
+
+
+```
+
+Figure for males  
+
+```{r}
+
+male_data %>% 
+  select(clust_13, leaf_length, leaf_area, leaf_perim) %>% 
+  gather(key = "leaf_trait", value = "value", -clust_13) %>% 
+  ggplot(aes(x = clust_13, y = value)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~leaf_trait)
+
+male_data %>% 
+  select(clust_16, days21, days_gam) %>% 
+  gather(key = "development", value = "value", -clust_16) %>% 
+  ggplot(aes(x = clust_16, y = value, color = development)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+male_data %>% 
+  ggplot(aes(x = clust_13, y = area_wk3)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+male_data %>% 
+  ggplot(aes(x = days21, y = days_gam)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
