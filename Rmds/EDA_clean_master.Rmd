@@ -205,6 +205,8 @@ traits %>%
   mutate_at(c(5:15), list(~ log10(. + 1))) %>% 
   mutate_at(c(5:15), scale) -> scaled_traits
 
+#saveRDS(scaled_traits, "cleandata/JMP_traits.RDS")
+
 scaled_traits %>% 
   select(-c(famid, sampid, ssex, raw_repro)) %>% 
   gather(key = "trait", value = "raw_values") %>% 
@@ -365,6 +367,7 @@ log_vocs <- voc_data %>%
 st_log_vocs <- log_vocs %>% 
   mutate_at(vars(starts_with("m")), scale)
 
+#saveRDS(log_vocs, "cleandata/JMP_vocs.RDS")
 
 
 long_vocs <- st_log_vocs %>% 
