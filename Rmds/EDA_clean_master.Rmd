@@ -365,6 +365,8 @@ log_vocs <- voc_data %>%
 st_log_vocs <- log_vocs %>% 
   mutate_at(vars(starts_with("m")), scale)
 
+
+
 long_vocs <- st_log_vocs %>% 
   gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
   mutate(voc = factor(voc, levels = unique(voc)))
