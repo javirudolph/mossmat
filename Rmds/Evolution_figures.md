@@ -22,7 +22,6 @@ Javiera Rudolph
       - [Subtracted matrix](#subtracted-matrix)
   - [Relationship between VOC clusters and the life history
     traits](#relationship-between-voc-clusters-and-the-life-history-traits)
-      - [Males](#males)
 
 # VOCs data
 
@@ -243,8 +242,6 @@ Also can do it with ggplot
 ![](Evolution_figures_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 # Relationship between VOC clusters and the life history traits
-
-## Males
 
 1.  Cluster 6 and area at week 3
     ![](Evolution_figures_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->![](Evolution_figures_files/figure-gfm/unnamed-chunk-13-2.png)<!-- -->![](Evolution_figures_files/figure-gfm/unnamed-chunk-13-3.png)<!-- -->

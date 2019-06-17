@@ -99,16 +99,26 @@ master %>%
 
 ```{r}
 # Males - correlation
-cor_males <- cor(male_data[,2:29], use = "na.or.complete")
+#cor_males <- cor(male_data[,2:29], use = "na.or.complete")
+cor_males <- rcorr(as.matrix(male_data[,2:29]))
 # Females - correlation
-cor_fem <- cor(fem_data[,2:29], use = "na.or.complete")
+#cor_fem <- cor(fem_data[,2:29], use = "na.or.complete")
+cor_fem <- rcorr(as.matrix(fem_data[,2:29]))
 ```
 
 
 ```{r fig.width=9, fig.height=9}
-corrplot(cor_males, title = "Males", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0))
+# corrplot(cor_males, title = "Males", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0))
+# 
+# corrplot(cor_fem, title = "Females", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0))
 
-corrplot(cor_fem, title = "Females", type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0))
+
+# To use with the rcorr() data
+
+corrplot(cor_males$r, title = "Males",p.mat = cor_males$P, type = "upper", sig.level = 0.05, insig = "pch", tl.col = "black", tl.srt = 60, tl.cex = .4, pch.cex = 0.8, pch.col = "#43484f", mar = c(0,0,2,0))
+
+
+corrplot(cor_fem$r, title = "Females",p.mat = cor_fem$P, type = "upper", sig.level = 0.05, insig = "pch", tl.col = "black", tl.srt = 60, tl.cex = .4, pch.cex = 0.8, pch.col = "#43484f", mar = c(0,0,2,0))
 
 ```
 
@@ -185,7 +195,8 @@ Basically, taking the trait correlation matrix for males and subtracting the val
 # If you want to consider the males subtracted from female matrices
 # From the correlation matrices
 
-minus_mat <- cor_males - cor_fem
+#minus_mat <- cor_males - cor_fem
+minus_mat <- cor_males$r - cor_fem$r
 corrplot(minus_mat,  type = "upper", tl.col = "black", tl.srt = 60, tl.cex = .8, mar = c(0,0,2,0), title = "Difference between males and females") # you can do this with corrplot
 
 ```
@@ -216,8 +227,6 @@ minus_mat %>%
 
 # Relationship between VOC clusters and the life history traits
 
-
-## Males
 
 1. Cluster 6 and area at week 3
 ```{r}
