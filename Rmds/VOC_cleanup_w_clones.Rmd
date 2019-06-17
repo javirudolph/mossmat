@@ -1,0 +1,257 @@
+---
+title: "VOC_data cleanup - keeping clones"
+author: "Javiera Rudolph"
+date: "6/17/2019"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 14, fig.height = 4)
+
+```
+
+```{r libraries}
+library(tidyverse)
+library(vegan)
+library(plotly)
+library(corrplot)
+library(ggpubr)
+library(Hmisc)
+
+theme_set(theme_bw())
+```
+
+We are going to be working with the VOC data and make the clusters but using the clones.
+
+```{r}
+# Read in the raw data
+rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
+```
+
+
+# Base cleaning
+- Remove other traits  
+- Remove NAs at the end  
+- Change names  
+- Standardize sampleID names (no special characters)
+
+```{r}
+# Just keep volatile data and identifiers
+# Also, remove the NAs, there's a lot at the end
+# Remove '(2)' notation from sample ids
+
+#names(rawdata)
+voc_raw <- rawdata[,c(1,2,4,5, 20:109)] %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         ssex = Sample_Sex) %>% 
+  drop_na() %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"))
+
+#' Shorten voc names
+oldnames <- names(voc_raw)
+names(voc_raw)[5:94] <- stringr::str_trunc(oldnames[5:94], width = 6, side = "right", ellipsis = "")
+
+```
+
+There was an issue with the notation in one of the compounds, so we check that and fix the notation so that R can recognize the values as numbers.
+```{r}
+#str(voc_raw)
+#' m111.0 is a character
+#voc_raw$m111.0
+#' The notation is different, using a capital E
+voc_raw$m111.0 <- as.numeric(str_replace(voc_raw$m111.0, "E", "e"))
+```
+
+# May 30
+Removing samples from May 30. These were off, and you can check the figures from the EDA_clean_master.Rmd which includes all the figures about it. Here, we are also making any negative values be equal to zero.
+```{r}
+voc_raw %>% 
+  filter(Date.PTR != "30-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) %>% 
+  dplyr::select(-Date.PTR) -> vocs
+```
+
+# 10% threshold  
+
+```{r}
+# Create a dataset with only the compounds for which at least 10% of the observations show it.
+vocs %>% 
+  select(-famid, -sampid, -ssex) %>% 
+  mutate_if(is.numeric, function(x) ifelse(x > 0, 1, 0)) %>% 
+  colSums() %>% 
+  data.frame() %>% 
+  rownames_to_column() %>%
+  setNames(., c("voc", "count")) %>% 
+  mutate(prcnt = count/nrow(vocs)) %>% 
+  filter(prcnt >= 0.1) -> voc_filter
+
+vocs %>% 
+  select(famid, sampid, ssex, c(voc_filter$voc)) %>% 
+  mutate(ssex = str_to_lower(as.character(ssex))) -> voc_data
+```
+
+# Exploration with clones
+
+
+```{r}
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+
+long_voc_data %>%
+  ggplot(aes(x = voc, y = conc)) +
+  geom_point() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90))
+
+long_voc_data %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+
+```
+
+We see that there are three big outliers. The values are so small and over the machine's detection thresold, so we will make them equal to zero.
+
+```{r}
+# Making these outliers be zero
+voc_data[voc_data < 1e-15 & voc_data>0] <- 0
+
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+
+```
+
+```{r eval = FALSE}
+long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  lims(y = c(1e-13, 1e-05)) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+
+```
+
+
+## Transformation and scaling
+
+Based on PTR machines detection threshold, any values smaller than `1e-12` are equivalent to zero. Then we will standardize the data.
+```{r}
+log_vocs <- voc_data %>% 
+  mutate_at(vars(starts_with("m")), list(~ log10(. + 1e-12)))
+
+st_log_vocs <- log_vocs %>% 
+  mutate_at(vars(starts_with("m")), scale)
+
+# This is the data scaled and transformed with clone information
+saveRDS(st_log_vocs, file = "cleandata/VOC_transf_unclust_wclones_Jun17.RDS")
+
+long_vocs <- st_log_vocs %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+```
+
+This is how the transformed data looks like now, with a visual differentiation between males and females. Recall that the data for VOCs here has been log transfomed and scaled. 
+```{r fig.width=24, fig.height=8}
+ggarrange(long_vocs %>% 
+  ggplot(aes(x = voc, y = conc)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90)),
+  long_vocs %>% 
+  ggplot(aes(x = voc, y = conc, fill = ssex)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90),
+        legend.position = "bottom"), nrow = 2)
+```
+
+#### Correlations
+I would be careful with these correlations, because they are taking each sample/clone as an independent observation. However, we know that these clones are not genetically independent. There should be a way to constrain or account for that relationship in this correlation.
+
+```{r fig.width=10, fig.height=10}
+
+cor_data <- as.matrix(st_log_vocs[,4:78])
+
+cor_res <- rcorr(x = cor_data, type = "pearson")
+
+saveRDS(cor_res, "cleandata/data_for_figs/voc_correlation_data.RDS")
+corrplot(cor_res$r, p.mat = cor_res$P, sig.level = 0.001, insig = "pch", tl.col = "black", tl.srt = 60, tl.cex = .4, order = "hclust", pch.cex = 0.8, pch.col = "#43484f", addrect = 17)
+```
+
+
+#### Clustering
+
+Haven't found a good reasoning to come up with a specific number of clusters. However, by making these clusters using the correlation matrix, we can see how variables (in this case compounds) are grouped together.
+
+```{r}
+d <- as.dist(1-cor_res$r)
+hr <- hclust(d)
+#names(hr)
+plot(hr, hang = -1)
+rect.hclust(hr, h = max(hr$height)/2)
+```
+
+```{r eval = FALSE, echo = FALSE}
+# This wa swith arbitrary number of clusters and also not sure about using dist vs as.dist(1-data). Since we are using correlation, I'm incluined to the second option.
+voc_dist <- hclust(dist(cor_res$r))
+plot(voc_dist, hang = -1)
+rect.hclust(voc_dist, k =15)
+
+voc_clusters <- data.frame(clust = cutree(voc_dist, k = 15)) %>% 
+  rownames_to_column(var = "voc")
+```
+
+Using the clustering to create a new data frame
+
+**Making the clusters with the data that was already transformed and scaled**
+I think it makes more sense to use this one, since this is the data we actually used to create the clusters. Our correlations and everything else is based on this transformed data, so this is probably what we should use to create the new dataset of clustered VOCs.
+
+```{r}
+
+# This one gets the clustered data by getting the mean using the transformed and scaled data.
+voc_clusters <- data.frame(clust = cutree(hr, h = max(hr$height)/2)) %>% 
+  rownames_to_column(var = "voc") 
+
+
+long_vocs %>% 
+  left_join(voc_clusters) %>% 
+  group_by(sampid, clust, famid, ssex) %>% 
+  summarise(voc_value = mean(conc)) %>% 
+  mutate(voc_clust = str_pad(clust, width = 2, side = "left", pad = 0),
+         voc_clust = paste0("clust_", voc_clust)) %>% 
+  ungroup() %>% 
+  select(-clust) -> clustered_long_vocs2
+
+clustered_long_vocs2 %>% 
+  spread(key = voc_clust, value = voc_value) -> clustered_voc_data2
+
+clustered_long_vocs2 %>% 
+  ggplot(aes(x = voc_clust, y = voc_value, fill = ssex)) +
+  geom_boxplot(notch = TRUE, alpha = 0.2) +
+  labs(x = "VOC ID",
+       y = "Log transformed and scaled concentration") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+These are the clusters and the compounds in each cluster
+```{r echo = FALSE}
+voc_clusters %>% 
+  dplyr::select(clust, voc) %>% 
+  rename(Cluster = clust, Compound = voc) %>% 
+  arrange(Cluster) %>% 
+  knitr::kable()
+```
