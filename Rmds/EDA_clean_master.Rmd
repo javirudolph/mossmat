@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 14, fig.height =
 
 ```
 
-```{r libraries}
+```{r libraries, message=FALSE}
 library(tidyverse)
 library(vegan)
 library(plotly)
@@ -32,6 +32,7 @@ Data cleaning is a really important section since lots of our functions will thr
 ```{r}
 # Read in the raw data
 rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
+head(rawdata)
 ```
 
 
@@ -40,6 +41,7 @@ To make things a little easier we are going to tackle the trait data first and t
 
 ```{r}
 
+# Change variable names and fix sample ID names with spaces, or parentheses
 trait_raw <- rawdata[,1:19] %>% 
   rename(famid = `Fam..`,
          sampid = Sample.Name,
@@ -47,10 +49,10 @@ trait_raw <- rawdata[,1:19] %>%
   drop_na(famid) %>% 
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
          sampid = str_trim(sampid, side = "both"),
-         ssex = str_to_lower(as.character(ssex))) %>% 
-  mutate_at(vars(starts_with("Leaf")), as.numeric) %>% 
+         ssex = str_to_lower(as.character(ssex))) %>% # Sex on lower case only
+  mutate_at(vars(starts_with("Leaf")), as.numeric) %>% # Make them all numeric 
   group_by(famid) %>% 
-  arrange(sampid, .by_group = TRUE) %>% 
+  arrange(sampid, .by_group = TRUE) %>% # Order by family number
   ungroup
 
 # Fix a data entry error:
@@ -61,6 +63,8 @@ trait_raw$Avg_21_days[which(trait_raw$Avg_21_days == 33)] <- 0.33
 # Check Github issue #5
 trait_raw[which(trait_raw$sampid == "P_18_1_6_B"),]$ssex <- "m"
 trait_raw <- trait_raw[-which(trait_raw$sampid == "P_6_6_20"),]
+
+head(trait_raw)
 ```
 
 #### Leaf traits
@@ -77,9 +81,13 @@ trait_raw[,17:19] %>%
 There are no clear outliers or errors, so these look ok to average and we create a new data frame with the leaf data. In cases where data for only one of the clones was available, we kept that value. For cases where data was available for both clones we averaged it.  
 ```{r}
 trait_raw[,c(2, 17:19),] %>% 
-  group_by(sampid) %>% 
+  group_by(sampid) %>% # sampid is the unique identifier for the clones
   summarise_at(vars(starts_with("Leaf")), mean, na.rm = TRUE) %>% 
-  mutate_at(vars(starts_with("Leaf")), list(~ as.numeric(ifelse(. == "NaN", "NA", .)))) -> leaf_data
+  mutate_at(vars(starts_with("Leaf")), list(~ as.numeric(ifelse(. == "NaN", "NA", .)))) %>% 
+  drop_na(sampid)-> leaf_data
+
+# Some NAs
+leaf_data[!complete.cases(leaf_data), ]
 
 ```
 
@@ -139,6 +147,7 @@ trait_raw[,c(2, 10:16)] %>%
 
 #### Reproduction variable
 We have different reproduction variables for males and females, so we can scale them and that way keep them under one variable only. This could be wrong, but I honestly don't know what else we could do.
+The first thing we do here is take the average for the clones (meaning we group by the sample ID, take the average) which we call `raw_av` and then scale this so that both male and female values are in the same *scale*, and we call this `reprovar`.
 ```{r}
 # Reproduction variable ---------------------------------------------------
 
@@ -162,6 +171,7 @@ trait_raw %>%
 
 
 reprovar <- bind_rows(male_reprovar, fem_reprovar)
+head(reprovar)
 reprovar %>% 
   ggplot(aes(x = reprovar, fill = ssex)) +
   geom_histogram()
@@ -186,6 +196,7 @@ trait_raw %>%
 ```
 
 #### Histograms raw trait data
+These are the values for all the traits that were measured and they include only one value per individual. Here, I consider an individual to each of the siblings. This means that we have averaged the measurements associated to clonal replicates, so we get an average of measurements per sibling.
 
 ```{r}
 traits %>% 
@@ -197,7 +208,8 @@ traits %>%
 ```
 
 #### Histograms transformed trait data
-If we log transform the data and then scale it, the following figure shows the histograms for all the variables. Since we have variables in different units, we will use the scaled traits for future analyses and models.
+It depends on what we need and how the data needs to be formatted.  
+If we log transform the data and then scale it, the following figure shows the histograms for all the variables. Since we have variables in different units, we would probably use the scaled traits for future analyses and models.
 
 ```{r}
 names(traits)
@@ -218,7 +230,7 @@ scaled_traits %>%
 
 ## Volatile Organic Compounds
 
-Using the same raw data csv file, we are going to select only the identifiers and the VOC data. 
+Using the same raw data csv file, we are going to select only the identifiers and the VOC data. By identifiers, I mean the sample ID, which is a way to identify the different clones.  
 
 ```{r}
 # Just keep volatile data and identifiers
@@ -232,21 +244,31 @@ voc_raw <- rawdata[,c(1,2,4,5, 20:109)] %>%
          ssex = Sample_Sex) %>% 
   drop_na() %>% 
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
-         sampid = str_trim(sampid, side = "both"))
+         sampid = str_trim(sampid, side = "both"),
+         ssex = str_to_lower(as.character(ssex))) %>% 
+  group_by(famid) %>% 
+  arrange(sampid, .by_group = TRUE) %>% # Order by family number
+  ungroup
+
 
 #' Shorten voc names
 oldnames <- names(voc_raw)
 names(voc_raw)[5:94] <- stringr::str_trunc(oldnames[5:94], width = 6, side = "right", ellipsis = "")
 
+voc_raw[1:5, 1:6]
+
 ```
 
 There was an issue with the notation in one of the compounds, so we check that and fix the notation so that R can recognize the values as numbers.
 ```{r}
-#str(voc_raw)
+str(voc_raw$m111.0)
 #' m111.0 is a character
 #voc_raw$m111.0
 #' The notation is different, using a capital E
 voc_raw$m111.0 <- as.numeric(str_replace(voc_raw$m111.0, "E", "e"))
+voc_raw[which(is.na(voc_raw$m111.0)),] # this one is NA, originally came as `#VALUE!` from excel. It's also a May 30 sample.
+
+
 ```
 
 ### May 30 samples
@@ -255,20 +277,21 @@ Leslie mentioned that data associated to May 30 was really off, so we are going 
 ```{r message=FALSE}
 voc_raw %>% 
   dplyr::select(-c(famid, sampid, ssex)) %>% 
-  gather(., key = "compound", value = "value", -Date.PTR) %>% 
+  pivot_longer(-Date.PTR, "compound", "value") %>% 
   ggplot(aes(x = Date.PTR, y = value)) +
-  geom_boxplot() -> withMay30
+  geom_boxplot()
+```
 
+It is pretty evident that the values are off for that date, so we can't consider it for the analysis. In addition to this, we are making any negative value be equal to zero. These compound concentrations are obtained by subtracting the "noise", therefore negative values just mean that the sample has mostly noise, and not that specific compound.
+
+```{r}
 voc_raw %>% 
-  filter(Date.PTR != "30-May") %>%
+  filter(Date.PTR != "30-May") %>% 
   mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
-  arrange(sampid, .by_group = TRUE) %>% 
   dplyr::select(-c(famid, sampid, ssex)) %>% 
-  gather(., key = "compound", value = "value", -Date.PTR) %>% 
+  pivot_longer(-Date.PTR, "compound", "value") %>% 
   ggplot(aes(x = Date.PTR, y = value)) +
-  geom_boxplot() ->woutMay30
-
-ggarrange(withMay30, woutMay30, nrow = 2)
+  geom_boxplot()
 
 ```
 
@@ -277,9 +300,8 @@ We are only going to keep the compounds for which at least 10% of the samples ha
 
 ```{r}
 voc_raw %>% 
-  filter(Date.PTR != "30-May") %>%
-  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
-  arrange(sampid, .by_group = TRUE) %>% 
+  filter(Date.PTR != "30-May") %>% 
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>%  
   dplyr::select(-Date.PTR) -> vocs
 
 # Create a dataset with only the compounds for which at least 10% of the observations show it.
@@ -293,13 +315,17 @@ vocs %>%
   mutate(prcnt = count/nrow(vocs)) %>% 
   filter(prcnt >= 0.1) -> voc_filter
 
+# This one keeps the clones data
+vocs %>% 
+  select(famid, sampid, ssex, c(voc_filter$voc)) -> voc_clones
+
+# This one considers both clones, and keeps only the biggest value for each of the compounds
 vocs %>% 
   select(famid, sampid, ssex, c(voc_filter$voc)) %>% 
   group_by(sampid) %>%
-  mutate_at(vars(starts_with("m")), max) %>% 
+  mutate_at(vars(starts_with("m")), max) %>% # This is selecting the maximum value for all the volatiles
   ungroup () %>% 
-  distinct() %>% 
-  mutate(ssex = str_to_lower(as.character(ssex))) -> voc_data
+  distinct() -> voc_data
 
 ```
 
@@ -309,7 +335,7 @@ For us to cluster the VOC data, we need to look at it first.
 
 ```{r}
 long_voc_data <- voc_data %>% 
-  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  pivot_longer(-c(famid, sampid, ssex), names_to = "voc", values_to = "conc") %>%
   mutate(voc = factor(voc, levels = unique(voc)))
 
 ```
@@ -324,7 +350,9 @@ long_voc_data %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-After looking at the data, the first thought is to log transform it. To check for any measurement outliers we might want to get rid of the zeroes and transform the data to identify potential outliers.
+**Thoughts on Nov 20** Perhaps we should just consider a threshold concentration or variation. We might not want to keep those volatiles that have such low values. Perhaps just focusing on m31.99, m33.03, m43.01, etc.  
+
+After looking at the data, the first thought is to log transform it. To check for any measurement outliers, we might want to get rid of the zeroes and transform the data to identify potential outliers.
 
 ```{r}
 long_voc_data %>% 
@@ -371,7 +399,9 @@ st_log_vocs <- log_vocs %>%
 
 
 long_vocs <- st_log_vocs %>% 
-  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  pivot_longer(., -c(famid, sampid, ssex),
+               names_to = "voc", values_to="conc") %>% 
+  #gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
   mutate(voc = factor(voc, levels = unique(voc)))
 
 ```
@@ -448,7 +478,11 @@ long_voc_data %>%
   select(-clust) -> clustered_long_vocs
 
 clustered_long_vocs %>% 
-  spread(key = voc_clust, value = voc_value) -> clustered_voc_data
+  spread(key = voc_clust, value = voc_value)
+
+clustered_long_vocs %>% 
+  pivot_wider(., names_from = "voc_clust", 
+               values_from = "voc_value") -> clustered_voc_data
 
 
 clustered_log_vocs <- clustered_voc_data %>% 
@@ -458,7 +492,9 @@ clustered_st_log_vocs <- clustered_log_vocs %>%
   mutate_at(vars(starts_with("c")), scale)
 
 clustered_long_vocs <- clustered_st_log_vocs %>% 
-  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  #gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  pivot_longer(., -c(famid, sampid, ssex),
+               names_to = "voc", values_to = "conc") %>% 
   mutate(voc = factor(voc, levels = unique(voc)))
 
 clustered_long_vocs %>% 
@@ -488,8 +524,12 @@ long_vocs %>%
   ungroup() %>% 
   select(-clust) -> clustered_long_vocs2
 
+# clustered_long_vocs2 %>% 
+#   spread(key = voc_clust, value = voc_value) -> clustered_voc_data2
+
 clustered_long_vocs2 %>% 
-  spread(key = voc_clust, value = voc_value) -> clustered_voc_data2
+  pivot_wider(., names_from = "voc_clust",
+              values_from = "voc_value") ->clustered_voc_data2
 
 clustered_long_vocs2 %>% 
   ggplot(aes(x = voc_clust, y = voc_value, fill = ssex)) +
@@ -511,7 +551,7 @@ voc_clusters %>%
 
 
 ### Master dataframe
-This will create the master data frame that includes the lifehistory traits and the VOC clustered data. All of these are already log transformed and scaled.
+This will create the master data frame that includes the lifehistory traits and the VOC clustered data. All of these are already log transformed and scaled. Also, there is one row per individual, which means the data for clones has either been averaged(for traits) or the max value has been taken (volatiles).
 
 ```{r}
 clean_master <- full_join(scaled_traits, clustered_voc_data2) %>% 
