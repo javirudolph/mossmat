@@ -556,6 +556,8 @@ trait_raw %>%
               "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
               "days21", "days_gam", "leaf_length", "leaf_area",
               "leaf_perim")) -> traits
+
+#saveRDS(traits, "Nov22_2019/clean_traits.RDS")
 ```
 
 #### Histograms raw trait data
@@ -732,6 +734,11 @@ negative value be equal to zero. These compound concentrations are
 obtained by subtracting the “noise”, therefore negative values just mean
 that the sample has mostly noise, and not that specific compound.
 
+When we look at these other days, most of them have the same range in
+variation, except for May 25 and May 29, which might indicate some other
+issues here and perhaps we should consider what happened these days and
+whether or not we should keep them for the analysis.
+
 ``` r
 voc_raw %>% 
   filter(Date.PTR != "30-May") %>% 
@@ -782,6 +789,8 @@ vocs %>%
   mutate_at(vars(starts_with("m")), max) %>% # This is selecting the maximum value for all the volatiles
   ungroup () %>% 
   distinct() -> voc_data
+
+#saveRDS(voc_data, "Nov22_2019/clean_vocs.RDS")
 ```
 
 ### VOC Clustering
