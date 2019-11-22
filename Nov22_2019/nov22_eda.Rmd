@@ -1,0 +1,392 @@
+---
+title: "Nov 22, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,
+                      warning = FALSE,
+                      fig.width = 14, fig.height = 4)
+
+```
+
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(vegan)
+library(plotly)
+library(corrplot)
+library(ggpubr)
+library(Hmisc)
+library(phyloseq)
+
+theme_set(theme_bw())
+```
+
+
+
+# Data cleaning
+Data cleaning is a really important section since lots of our functions will throw errors with NAs, zeroes or any typos. 
+```{r}
+# Read in the raw data
+rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
+#head(rawdata)
+```
+
+
+## Trait data
+To make things a little easier we are going to tackle the trait data first and then we will go on to clean VOCs. Some changes that we wish to accomplish here include changing the variable names to simpler/shorter ones without special characters. We would also like to remove empty rows at the end, manage the zeroes and NAs. There are some errors in measurements and typos that we need to address. 
+
+```{r warning = FALSE}
+
+# Change variable names and fix sample ID names with spaces, or parentheses
+trait_raw <- rawdata[,1:19] %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         sex = Sample_Sex) %>% 
+  drop_na(famid) %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"),
+         sex = str_to_lower(as.character(sex))) %>% # Sex on lower case only
+  mutate_at(vars(starts_with("Leaf")), as.numeric) %>% # Make them all numeric 
+  group_by(famid) %>% 
+  arrange(sampid, .by_group = TRUE) %>% # Order by family number
+  ungroup
+
+# Fix a data entry error:
+# Check Github issue #5
+trait_raw$Avg_21_days[which(trait_raw$Avg_21_days == 33)] <- 0.33
+
+# Fix sex data entry error
+# Check Github issue #5
+trait_raw[which(trait_raw$sampid == "P_18_1_6_B"),]$sex <- "m"
+trait_raw <- trait_raw[-which(trait_raw$sampid == "P_6_6_20"),]
+
+# From previous analysis, we have found some outliers:
+outliers <- which(trait_raw$Avg_Area._Week_3>50)
+#trait_raw[outliers,]
+
+trait_raw$Avg_Area._Week_3[outliers] <- trait_raw$Avg_Area._Week_3[outliers] / 1000
+trait_raw$Avg_Circularity_Week.3[outliers] <- trait_raw$Avg_Circularity_Week.3[outliers] / 1000
+negs <- which(trait_raw$Avg_Perimeter_Rate < 0)
+#trait_raw[negs,]
+
+#trait_raw$Avg_Perimeter_Rate[negs]
+trait_raw$Avg_Perimeter_Rate[negs] <- trait_raw$Avg_Perimeter_Rate[negs] /-10
+
+```
+
+There seems to be a data entry error for:
+```{r}
+
+trait_raw[,c(1,2,5)] %>% 
+  filter(sampid == "p_1_6_14" | sampid == "P_1_6_14") %>% 
+  knitr::kable()
+```
+
+#### Leaf traits
+```{r eval = FALSE}
+# Leaf data averaging -----------------------------------------------------
+
+trait_raw[,17:19] %>% 
+  gather(key = "trait", value = "value") %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+```
+
+Check overall how the data is distributed and make sure there are no obvious outliers. 
+
+```{r}
+# First, we visually check for outliers or values that may not make sense.
+# Leaf data averaging -----------------------------------------------------
+
+trait_raw[,c(1,2,5,17:19)] %>% 
+#  nrow()
+  pivot_longer(., cols = starts_with("l"),
+               names_to = "trait", values_to =  "value") -> leaf_data
+
+give.n <- function(x){
+  return(c(y = max(x)*1.05, label = length(x)))
+  # experiment with the multiplier to find the perfect position
+}
+mean.n <- function(x){
+  return(c(y = median(x)*0.97, label = round(mean(x),2))) 
+  # experiment with the multiplier to find the perfect position
+}
+
+
+leaf_data %>% 
+#  filter(famid == "1") %>% 
+  ggplot(aes(x = sex, y = value)) + 
+  geom_boxplot() + 
+  stat_summary(fun.data = give.n, geom = "text",
+               fun.y = mean.n, color = "blue") +
+  labs(y = "Value of the trait") +
+#  geom_point(alpha = 0.2, size = 2) +
+  facet_wrap(~trait, scales = "free")
+```
+
+There are no clear outliers or errors, so these look ok to average and we create a new data frame with the leaf data. In cases where data for only one of the clones was available, we kept that value. For cases where data was available for both clones we averaged it.  
+```{r}
+trait_raw[,c(2, 17:19),] %>% 
+  group_by(sampid) %>% # sampid is the unique identifier for the clones
+  summarise_at(vars(starts_with("Leaf")), mean, na.rm = TRUE) %>% 
+  mutate_at(vars(starts_with("Leaf")), list(~ as.numeric(ifelse(. == "NaN", "NA", .)))) %>% 
+  drop_na(sampid)-> leaf_data
+
+# Some NAs
+leaf_data[!complete.cases(leaf_data),] %>% 
+  knitr::kable()
+
+```
+
+#### Growth and development traits
+
+To get the big picture:
+```{r}
+trait_raw[,10:16] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+```
+
+
+Unlike the leaf data, these traits have already been averaged by individual, since the technical replicates have the same values for each individual: 
+```{r}
+head(
+  trait_raw[,c(1,2,5,10:16)] %>% 
+    filter(duplicated(sampid) | duplicated(sampid, fromLast = TRUE))
+)
+```
+
+We create a new data frame with only the individuals, no technical replicates, since the measurements are the same. We visualize this separated by traits and sex
+
+```{r fig.height=10}
+# Growth and Development traits -------------------------------------------
+
+trait_raw[,c(1,2,5, 10:16)] %>% 
+  drop_na() %>% 
+  distinct() -> gro_dev_data
+
+gro_dev_data %>% 
+  gather(key = "trait", value = "value", -c(sampid, famid, sex)) %>% 
+  drop_na() %>% 
+  ggplot(aes(x = sex, y = value)) + 
+  geom_boxplot() +
+  facet_wrap(~trait, scales = "free")
+```
+
+
+#### Reproduction variable
+We have different reproduction variables for males and females, so we can scale them and that way keep them under one variable only. This could be wrong, but I honestly don't know what else we could do.
+The first thing we do here is take the average for the clones (meaning we group by the sample ID, take the average) which we call `raw_av` and then scale this so that both male and female values are in the same *scale*, and we call this `reprovar`.
+```{r}
+# Reproduction variable ---------------------------------------------------
+
+trait_raw %>% 
+  filter(sex == "m") %>% 
+  select(sampid, sex, Avg_Male_Buds.Stem)%>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(raw_av = mean(Avg_Male_Buds.Stem)) %>% 
+  mutate(reprovar = scale(raw_av),
+         sex = "m")  -> male_reprovar
+
+trait_raw %>% 
+  select(sampid, sex, Avg_Arch) %>% 
+  filter(sex == "f") %>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(raw_av = mean(Avg_Arch)) %>% 
+  mutate(reprovar = scale(raw_av),
+         sex = "f") -> fem_reprovar
+
+
+reprovar <- bind_rows(male_reprovar, fem_reprovar)
+head(reprovar)
+reprovar %>% 
+  ggplot(aes(x = reprovar, fill = sex)) +
+  geom_histogram()
+```
+
+### Clean trait data
+
+We can join all these dataframes and have information for each of the individuals, with no individual replicates. 
+As of Nov 22, we haven't fixed individual with sampid = "P_1_6_14"
+
+```{r}
+# Join trait data ---------------------------------------------------------
+
+trait_raw %>% 
+  select(famid, sampid, sex) %>% 
+  distinct() %>% 
+  full_join(., reprovar) %>% 
+  full_join(., gro_dev_data) %>%
+  full_join(., leaf_data) %>% 
+  set_names(c("famid", "sampid", "sex", "raw_repro", "repro", "area_wk3",
+              "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
+              "days21", "days_gam", "leaf_length", "leaf_area",
+              "leaf_perim")) -> traits
+
+saveRDS(traits, "Nov22_2019/traits_by_indv.RDS")
+
+```
+
+#### Histograms raw trait data
+These are the values for all the traits that were measured and they include only one value per individual. Here, I consider an individual to each of the siblings. This means that we have averaged the measurements associated to clonal replicates, so we get an average of measurements per sibling.
+
+```{r fig.height=8}
+traits %>% 
+  select(-c(famid, sampid, sex, raw_repro)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#8e9998") +
+  facet_wrap( ~ trait, scales = "free")
+```
+
+
+<!-- #### Histograms transformed trait data
+It depends on what we need and how the data needs to be formatted.  
+If we log transform the data and then scale it, the following figure shows the histograms for all the variables. Since we have variables in different units, we would probably use the scaled traits for future analyses and models.
+
+```{r}
+names(traits)
+traits %>% 
+  mutate_at(c(5:15), list(~ log10(. + 1))) %>% 
+  mutate_at(c(5:15), scale) -> scaled_traits
+
+
+scaled_traits %>% 
+  select(-c(famid, sampid, sex, raw_repro)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#7e9bcc") +
+  facet_wrap( ~ trait, scales = "free")
+```
+
+-->
+
+## Volatile Organic Compounds
+
+Using the same raw data csv file, we are going to select only the identifiers and the VOC data. By identifiers, I mean the sample ID, which is a way to identify the different clones.  
+
+```{r}
+# Just keep volatile data and identifiers
+# Also, remove the NAs, there's a lot at the end
+# Remove '(2)' notation from sample ids
+
+#names(rawdata)
+voc_raw <- rawdata[,c(1,2,4,5, 20:109)] %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         sex = Sample_Sex) %>% 
+  drop_na() %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"),
+         sex = str_to_lower(as.character(sex))) %>% 
+  group_by(famid) %>% 
+  arrange(sampid, .by_group = TRUE) %>% # Order by family number
+  ungroup
+
+
+#' Shorten voc names
+oldnames <- names(voc_raw)
+names(voc_raw)[5:94] <- stringr::str_trunc(oldnames[5:94], width = 6, side = "right", ellipsis = "")
+
+# voc_raw[1:5, 1:6]
+
+# ---------------------------------------------------------
+# There was an issue with the notation in one of the compounds, so we check that and fix the notation so that R can recognize the values as numbers.
+
+#str(voc_raw$m111.0)
+#' m111.0 is a character
+#voc_raw$m111.0
+#' The notation is different, using a capital E
+voc_raw$m111.0 <- as.numeric(str_replace(voc_raw$m111.0, "E", "e"))
+# voc_raw[which(is.na(voc_raw$m111.0)),] # this one is NA, originally came as `#VALUE!` from excel. It's also a May 30 sample.
+
+
+```
+
+### May 30 samples
+Leslie mentioned that data associated to May 30 was really off, so we are going to check that and probably remove it if the values are not similar to the rest of the dataset. With the figure it is obvious that we need to remove the May 30 data. With these boxplots we see that there are some negative values. These come from subtracting the noise, so any negative values should be zero.
+
+```{r message=FALSE}
+voc_raw %>% 
+  dplyr::select(-c(famid, sampid, sex)) %>% 
+  pivot_longer(-Date.PTR, "compound", "value") %>% 
+  ggplot(aes(x = Date.PTR, y = value)) +
+  geom_boxplot()
+```
+
+It is pretty evident that the values are off for that date, so we can't consider it for the analysis. In addition to this, we are making any negative value be equal to zero. These compound concentrations are obtained by subtracting the "noise", therefore negative values just mean that the sample has mostly noise, and not that specific compound.
+
+When we look at these other days, most of them have the same range in variation, except for May 25 and May 29, which might indicate some other issues here and perhaps we should consider what happened these days and whether or not we should keep them for the analysis. 
+
+```{r}
+voc_raw %>% 
+  filter(Date.PTR != "30-May") %>% 
+#  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  dplyr::select(-c(famid, sampid, sex)) %>% 
+  pivot_longer(-Date.PTR, "compound", "value") %>% 
+  ggplot(aes(x = Date.PTR, y = value)) +
+ scale_y_log10() +
+  geom_boxplot()
+
+```
+
+
+### Using a 10% threshold 
+We are only going to keep the compounds for which at least 10% of the samples have a value greater than zero. According to Leslie, other sources use up to 40% of a threshold, however, we are interested in sexual dimorphism. That means that if there is a difference in compound production associated to the sex, then you automatically have only a 50% chance of producing that compound. Therefore, a 10 or 20% threshold is what would work for this project. 
+
+```{r}
+voc_raw %>% 
+  filter(Date.PTR != "30-May") %>% 
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>%  
+  dplyr::select(-Date.PTR) -> vocs
+
+# Create a dataset with only the compounds for which at least 10% of the observations show it.
+vocs %>% 
+  select(-famid, -sampid, -sex) %>% 
+  mutate_if(is.numeric, function(x) ifelse(x > 0, 1, 0)) %>% 
+  colSums() %>% 
+  data.frame() %>% 
+  rownames_to_column() %>%
+  setNames(., c("voc", "count")) %>% 
+  mutate(prcnt = count/nrow(vocs)) %>% 
+  filter(prcnt >= 0.1) -> voc_filter
+
+# This one keeps the clones data
+vocs %>% 
+  select(famid, sampid, sex, c(voc_filter$voc)) -> voc_clones
+
+# This one considers both clones, and keeps only the biggest value for each of the compounds
+vocs %>% 
+  select(famid, sampid, sex, c(voc_filter$voc)) %>% 
+  group_by(sampid) %>%
+  mutate_at(vars(starts_with("m")), max) %>% # This is selecting the maximum value for all the volatiles
+  ungroup () %>% 
+  distinct() -> voc_data
+
+saveRDS(voc_data, "Nov22_2019/voc_by_indiv.RDS")
+
+```
+
+After keeping only the compounds that at least 10% of the samples have, we can visualize how the concentrations of these compounds are distributed.  
+
+```{r}
+long_voc_data <- voc_data %>% 
+  pivot_longer(-c(famid, sampid, sex), names_to = "voc", values_to = "conc") %>%
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+# VOC data exploration
+# We know we are working with very small numbers and this influences how we will manage the data and what sort of clustering we can do for it. With a quick check, we see that the numbers are very small and that different compounds have very different ranges as well.
+
+long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+```

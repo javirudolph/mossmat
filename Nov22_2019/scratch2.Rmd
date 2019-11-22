@@ -15,6 +15,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(vegan)
+library(stringr)
 #library(plotly)
 library(corrplot)
 #library(ggpubr)
@@ -77,17 +78,32 @@ Check overall how the data is distributed and make sure there are no obvious out
 # Leaf data averaging -----------------------------------------------------
 
 trait_raw[,c(1,2,5,17:19)] %>% 
+#  nrow()
   pivot_longer(., cols = starts_with("l"),
                names_to = "trait", values_to =  "value") -> leaf_data
+
+give.n <- function(x){
+  return(c(y = max(x)*1.05, label = length(x)))
+  # experiment with the multiplier to find the perfect position
+}
+mean.n <- function(x){
+  return(c(y = median(x)*0.97, label = round(mean(x),2))) 
+  # experiment with the multiplier to find the perfect position
+}
+
+
 leaf_data %>% 
 #  filter(famid == "1") %>% 
-  ggplot(aes(y = value)) + 
-  geom_boxplot() +
+  ggplot(aes(x = sex, y = value)) + 
+  geom_boxplot() + 
+  stat_summary(fun.data = give.n, geom = "text",
+               fun.y = mean.n, color = "blue") +
+  labs(y = "Value of the trait") +
 #  geom_point(alpha = 0.2, size = 2) +
   facet_wrap(~trait, scales = "free")
 ```
 
-Also figure out how many missing values we have per individual or how many clones we have for each of them in each of these leaf measurements.  
+There are several NA values, probably from missing measurements of replicates dying.
 
 ```{r}
 
@@ -95,69 +111,90 @@ leaf_data[!complete.cases(leaf_data),]
   
 ```
 
-
-```{r, eval = FALSE}
-trait_raw[,c(2, 17:19),] %>% 
+If we average these values across technical replicates (clones), then we can get values for most of of the traits for most individuals.
+```{r}
+trait_raw[,c(1,2,5,17:19)] %>%
   group_by(sampid) %>% # sampid is the unique identifier for the clones
   summarise_at(vars(starts_with("Leaf")), mean, na.rm = TRUE) %>% 
-  mutate_at(vars(starts_with("Leaf")), list(~ as.numeric(ifelse(. == "NaN", "NA", .)))) -> leaf_data
+  mutate_at(vars(starts_with("Leaf")), list(~ as.numeric(ifelse(. == "NaN", "NA", .)))) -> leaf_data_av
 
 # Some NAs
-leaf_data[!complete.cases(leaf_data), ]
+leaf_data_av[!complete.cases(leaf_data_av), ]
 
 ```
 
 #### Growth and development traits
 We do the same thing with these other traits and it is easy to identify three values that seem incorrect. These are in the area, circularity and perimeter rate.
 
+Also, unlike the leaf data, these traits have already been averaged by individual, since the technical replicates have the same values for each individual: 
+```{r}
+head(
+  trait_raw[,c(1,2,5,10:16)] %>% 
+    filter(duplicated(sampid) | duplicated(sampid, fromLast = TRUE))
+)
+
+trait_raw[,c(1,2,5,10:16)] %>% 
+    filter(duplicated(sampid) | duplicated(sampid, fromLast = TRUE))
+
+```
+
+
 ```{r}
 # Growth and Development traits -------------------------------------------
 
-trait_raw[,10:16] %>% 
-  gather(key = "trait", value = "value") %>% 
-  drop_na() %>% 
-  ggplot(aes(x = trait, y = value)) + 
-  geom_boxplot()
+
+trait_raw[,c(1,2,5,10:16)] %>% 
+  distinct() %>% 
+#  nrow()
+  pivot_longer(., cols = starts_with("Avg"),
+               names_to = "trait", values_to =  "value") -> grodev_data
+  
+grodev_data %>% 
+  ggplot(aes(x = trait, y = value)) +
+  geom_boxplot() +
+  labs(y = "Trait values", x = "Traits") +
+  theme(axis.text.x = element_text(angle = 90))
+  
 ```
 
+
 ```{r}
+
+# Change those outliers
+grodev_data[which(grodev_data$value > 100),]$value <- grodev_data[which(grodev_data$value > 100),]$value / 1000
+
+# Find the negative numbers
+grodev_data[which(grodev_data$value < 0),]$value <- grodev_data[which(grodev_data$value < 0),]$value /-10
+
+grodev_data %>% 
+  ggplot(aes(x = sex, y = value)) + 
+  geom_boxplot() +
+  labs(x="") +
+  stat_summary(fun.data = give.n, geom = "text",
+               fun.y = mean.n, color = "blue") +
+#  theme(axis.text.x = element_text(angle = 90)) +
+  facet_wrap(~trait, scales = "free")
+
+```
+
+
+```{r, eval=FALSE}
+
 outliers <- which(trait_raw$Avg_Area._Week_3>50)
 trait_raw[outliers,]
-```
 
-```{r}
 trait_raw$Avg_Area._Week_3[outliers] <- trait_raw$Avg_Area._Week_3[outliers] / 1000
 trait_raw$Avg_Circularity_Week.3[outliers] <- trait_raw$Avg_Circularity_Week.3[outliers] / 1000
 
-# check again 
-trait_raw[,10:16] %>% 
-  gather(key = "trait", value = "value") %>% 
-  drop_na() %>% 
-  ggplot(aes(x = trait, y = value)) + 
-  geom_boxplot()
-```
-
-These values had mistakes in the number of decimal places and included a typo making a value be negative. After adjusting these values, we check again for errors. The data looks ok now, so we can save the dataframe.
-```{r}
-negs <- which(trait_raw$Avg_Perimeter_Rate < 0)
-trait_raw[negs,]
-
-trait_raw$Avg_Perimeter_Rate[negs]
-trait_raw$Avg_Perimeter_Rate[negs] <- trait_raw$Avg_Perimeter_Rate[negs] /-10
-
-# Check visually
-trait_raw[,10:16] %>% 
-  gather(key = "trait", value = "value") %>% 
-  drop_na() %>% 
-  ggplot(aes(x = trait, y = value)) + 
-  geom_boxplot()
-```
 
 
-```{r}
-trait_raw[,c(2, 10:16)] %>% 
-  drop_na() %>% 
-  distinct()-> gro_dev_data
+trait_raw[,c(1,2,5,10:16)] %>% 
+  filter(sampid == "p_1_6_14" | sampid == "P_1_6_14")
+  # filter(duplicated(sampid) | duplicated(sampid, fromLast = TRUE))
+  # group_by(famid,sampid, sex) %>% 
+  # summarise_at(vars(starts_with("Avg")), mean, na.rm = TRUE) %>% 
+  # mutate_at(vars(starts_with("Avg")), list(~ as.numeric(ifelse(. == "NaN", "NA", .)))) %>% 
+  # ungroup() -> test
 ```
 
 
@@ -204,7 +241,7 @@ trait_raw %>%
   distinct() %>% 
   full_join(., reprovar) %>% 
   full_join(., gro_dev_data) %>%
-  full_join(., leaf_data) %>% 
+  full_join(., leaf_data_av) %>% 
   set_names(c("famid", "sampid", "sex", "raw_repro", "repro", "area_wk3",
               "perim_wk3", "circ_wk3", "perim_rate", "area_rate",
               "days21", "days_gam", "leaf_length", "leaf_area",
