@@ -1,0 +1,196 @@
+---
+title: "Growth_Development_Traits_cleaning_data"
+author: "Leslie Kollar"
+date: "11/25/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 14, fig.height = 6)
+```
+
+## Data cleaning for life history traits
+
+Goals
+  1.) scale the variables: mean=0, st= 1
+  2.) 
+
+```{r libraries}
+library(tidyverse)
+library(vegan)
+library(plotly)
+library(corrplot)
+library(ggpubr)
+library(ggmosaic)
+```
+
+
+```{r dataload}
+data_traits <- read.csv("rawdata/Data_Growth_experiment_summer_2017_not_all.csv")
+```
+
+```{r}
+#Lots of DIV/0
+data_traits$Week_3_Circularity <- as.numeric(str_replace(data_traits$Week_3_Circularity, "#DIV/0!", "NA"))
+data_traits$Days_until_gametophores <- as.numeric(str_replace(data_traits$Days_until_gametophores, "#DIV/0!", "NA"))
+data_traits$Total_Gametophores <- as.numeric(str_replace(data_traits$Total_Gametophores,"#DIV/0!", "NA"))
+data_traits$Week_3_area <- as.numeric(str_replace(data_traits$Week_3_area, "#DIV/0!", "NA"))
+data_traits$Week_3_perimeter <- as.numeric(str_replace(data_traits$Week_3_perimete, "#DIV/0!", "NA"))
+
+#Filtering out rows with NAs because scale doees not like NA
+data_traits %>% 
+   filter_all(any_vars(is.na(.)))
+```
+
+```{r}
+# Change variable names and fix sample ID names with spaces, or parentheses
+
+trait <- data_traits %>% 
+  drop_na(Family) %>% 
+  mutate(Sample = str_replace_all(Sample, "\\(.*\\)", ""),
+         Sample = str_trim(Sample, side = "both"),
+         Sex = str_to_lower(as.character(Sex))) %>% # Sex on lower case only
+  mutate_at(vars(starts_with("Week_3_area")), as.numeric) %>% # Make them all numeric 
+  group_by(Family) %>% 
+  arrange(Sample, .by_group = TRUE) %>% # Order by family number
+  ungroup
+
+trait$Week_3_Circularity <- as.numeric(trait$Week_3_Circularity)
+
+# Add unique ID to each clone
+trait$ID <- seq.int(nrow(trait))
+str(trait)
+
+```
+
+
+
+## Checking for outliers and removing them
+```{r}
+#Visually check for outliers or values that do not make sense for area
+trait[,5] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+#Remove area week 3 outlier
+outliers <- which(trait$Week_3_area>50)
+trait[outliers,]
+
+trait$Week_3_area[outliers] <- (trait$Week_3_area[outliers] / 1000)
+                                
+#Visually check for outliers or values that do not make sense for perimeter
+trait[,6] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+#Remove perimeter week 3 outlier
+outliers <- which(trait$Week_3_perimeter>30)
+trait[outliers,]
+
+trait$Week_3_perimeter[outliers] <- (trait$Week_3_perimeter[outliers] / 1000)      
+
+
+#Remove circularity week 3 outlier
+trait[,7] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+outliers <- which(trait$Week_3_Circularity>10)
+trait[outliers,]
+
+trait$Week_3_Circularity[outliers] <- (trait$Week_3_Circularity[outliers] / 1000) 
+                                     
+#Remove Days Until Gam--- really are those outliers though?
+trait[,8] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+#Remove Total--- I dont think these are outliers either...
+trait[,9] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+#Double Check
+trait[,5:6] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+trait[,7] %>% 
+  gather(key = "trait", value = "value") %>% 
+  drop_na() %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+trait[,c(1, 5:9)] %>% 
+  drop_na() %>% 
+  distinct()-> gro_dev_data
+                                                                     
+```
+
+
+```{r}
+#Join all columns for one dataset
+trait %>% 
+  select(Family, Sample, Sex, Plate) %>% 
+  distinct() %>% 
+  full_join(., gro_dev_data) %>%
+  set_names(c("Family", "Sample", "Sex","Plate", "area_wk3",
+              "perim_wk3", "circ_wk3",
+              "days21", "days_gam")) -> traits
+
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Adding unique ID for clones
+``` {r}
+# Add unique ID to each clone
+traits$ID <- seq.int(nrow(traits))
+str(traits)
+```
+
+## Histogram of raw data
+```{r}
+traits %>% 
+  select(-c(Family, Sample, Sex, Plate)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#8e9998") +
+  facet_wrap( ~ trait, scales = "free")
+```
+
+```{r}
+names(traits)
+traits %>% 
+  mutate_at(c(5:9), list(~ log10(. + 1))) %>% 
+  mutate_at(c(5:9), scale) -> scaled_traits
+
+scaled_traits %>% 
+  select(-c(Family, Sample, Sex, Plate)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#7e9bcc") +
+  facet_wrap( ~ trait, scales = "free")
+```
+
+
+
+
+
+
+
+
