@@ -12,9 +12,6 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 14, fig.height 
 
 ## Data cleaning for life history traits
 
-Goals
-  1.) scale the variables: mean=0, st= 1
-  2.) 
 
 ```{r libraries}
 library(tidyverse)
