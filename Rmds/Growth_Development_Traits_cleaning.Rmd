@@ -137,56 +137,45 @@ trait[,c(1, 5:9)] %>%
                                                                      
 ```
 
-
-```{r}
-#Join all columns for one dataset
-trait %>% 
-  select(Family, Sample, Sex, Plate) %>% 
-  distinct() %>% 
-  full_join(., gro_dev_data) %>%
-  set_names(c("Family", "Sample", "Sex","Plate", "area_wk3",
-              "perim_wk3", "circ_wk3",
-              "days21", "days_gam")) -> traits
-
-```
-
-
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
-## Adding unique ID for clones
-``` {r}
-# Add unique ID to each clone
-traits$ID <- seq.int(nrow(traits))
-str(traits)
-```
 
 ## Histogram of raw data
 ```{r}
-traits %>% 
+
+#I think we can use the raw data for these traits moving forward. 
+trait %>% 
   select(-c(Family, Sample, Sex, Plate)) %>% 
   gather(key = "trait", value = "raw_values") %>% 
   ggplot(aes(x = raw_values, y = ..density..)) +
   geom_histogram(na.rm = TRUE, fill = "#8e9998") +
   facet_wrap( ~ trait, scales = "free")
+
+#saveRDS( , "cleandata/scaled_traits_Nov_26")
 ```
 
 ```{r}
-names(traits)
-traits %>% 
-  mutate_at(c(5:9), list(~ log10(. + 1))) %>% 
+#Scaling the traits and not log transforming them
+names(trait)
+trait %>% 
+  #mutate_at(c(5:9), list(~ log10(. + 1))) %>% 
   mutate_at(c(5:9), scale) -> scaled_traits
 
 scaled_traits %>% 
-  select(-c(Family, Sample, Sex, Plate)) %>% 
+  select(-c(Family, Sample, Sex, Plate, ID)) %>% 
   gather(key = "trait", value = "raw_values") %>% 
   ggplot(aes(x = raw_values, y = ..density..)) +
   geom_histogram(na.rm = TRUE, fill = "#7e9bcc") +
   facet_wrap( ~ trait, scales = "free")
+
+
 ```
 
 
 
 
+```{r}
+saveRDS(scaled_traits, "cleandata/Final_growth_dev_traits.RDS")
+```
 
 
 
