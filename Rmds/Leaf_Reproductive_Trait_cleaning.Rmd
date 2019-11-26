@@ -1,0 +1,140 @@
+---
+title: "Leaf_and_reproduciton_data"
+author: "Leslie Kollar"
+date: "11/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 14, fig.height = 4)
+```
+
+
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(vegan)
+library(plotly)
+library(corrplot)
+library(ggpubr)
+library(Hmisc)
+theme_set(theme_bw())
+```
+## Leaf and Reproduction Data
+The leaf and reproductive measurements were all taken on the plants with the volatile data so this data matches up exactly. 
+
+
+```{r dataload}
+setwd("/Users/lesliekollar/Desktop/Moss_matrix/")
+master <- read.csv("rawdata/LK_master.csv")
+```
+
+```{r}
+#Selecting only the data we want
+#I am not sure if I grabbed the right sex traits but I think these are most interesting yet still need to be better compared. 
+
+master_less <- master%>%
+  select(Fam.., Sample.Name, Sample_Sex, Leaf_Length_Average, Leaf_Average_Area, Leaf_perimeter_average,
+         Avg_Male_Buds.Stem, Avg_Arch)  
+str(master_less)
+
+```
+
+```{r}
+
+## Something isnt working here...
+
+master_less <- master_less[,1:8] %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         ssex = Sample_Sex) %>% 
+  drop_na(famid) %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"),
+         ssex = str_to_lower(as.character(ssex))) %>% # Sex on lower case only
+  mutate_at(vars(starts_with("Leaf")), as.numeric) %>% # Make them all numeric 
+  group_by(famid) %>% 
+  arrange(sampid, .by_group = TRUE) #%>% # Order by family number
+  ungroup
+```
+
+```{r}
+
+#Scaling reproductive traits. I think these traits are much better to use. The other is percent expression and females are more difficult to find. I think these are way more accurate measurements.
+
+master_less %>% 
+  filter(ssex == "m") %>% 
+  select(sampid, ssex, Avg_Male_Buds.Stem)%>% 
+  drop_na() %>% 
+  #group_by(sampid) %>% 
+  #summarise(raw_av = mean(Avg_Male_Buds.Stem)) %>% 
+  mutate(reprovar = scale( Avg_Male_Buds.Stem),
+         ssex = "m")  -> male_reprovar
+
+master_less %>% 
+  select(sampid, ssex, Avg_Arch) %>% 
+  filter(ssex == "f") %>% 
+  drop_na() %>% 
+  #group_by(sampid) %>% 
+  mutate(reprovar = scale(Avg_Arch),
+         ssex = "f") -> fem_reprovar
+
+
+reprovar <- bind_rows(male_reprovar, fem_reprovar)
+head(reprovar)
+
+#Did not combine with leaf data because different numbers of samples?
+
+```
+```{r}
+# Removing DIV/0
+str(master_less)
+master_less$Leaf_Average_Area <-  as.numeric(str_replace(master_less$Leaf_Average_Area, "#DIV/0", "NA"))
+master_less$Leaf_Length_Average <-  as.numeric(str_replace(master_less$Leaf_Length_Average, "#DIV/0", "NA"))
+master_less$Leaf_perimeter_average <-  as.numeric(str_replace(master_less$Leaf_perimeter_average, "#DIV/0", "NA"))
+```
+
+
+```{r}
+# Visually checking leaf data
+master_less[,4:6] %>% 
+  gather(key = "trait", value = "value") %>% 
+  ggplot(aes(x = trait, y = value)) + 
+  geom_boxplot()
+
+```
+
+
+
+```{r}
+master_less %>% 
+  select(famid, sampid, ssex, Leaf_Length_Average, Leaf_Average_Area, Leaf_perimeter_average) %>% 
+  distinct() %>% 
+  full_join(., reprovar) %>% 
+  distinct() %>%
+  set_names(c("Family", "Sample", "Sex", "raw_repro", "repro","leaf_length", "leaf_area",
+              "leaf_perim")) -> L_R_Traits
+```
+
+
+```{r}
+master_less %>% 
+  select(-c(famid, sampid, ssex)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#8e9998") +
+  facet_wrap( ~ trait, scales = "free")
+
+reprovar %>% 
+  select(-c(famid, sampid, Avg_Male_Buds.Stem, Avg_Arch)) %>% 
+  gather(key = "trait", value = "raw_values") %>% 
+  ggplot(aes(x = raw_values, y = ..density..)) +
+  geom_histogram(na.rm = TRUE, fill = "#8e9998") +
+  facet_wrap( ~ trait, scales = "free")
+
+
+```
+
+
+
+
