@@ -36,6 +36,9 @@ master <- read.csv("rawdata/LK_master.csv")
 master_less <- master%>%
   select(Fam.., Sample.Name, Sample_Sex, Leaf_Length_Average, Leaf_Average_Area, Leaf_perimeter_average,
          Avg_Male_Buds.Stem, Avg_Arch)  
+
+#Add in unique identifier
+master_less$ID <- seq.int(nrow(master_less))
 str(master_less)
 
 ```
@@ -44,7 +47,7 @@ str(master_less)
 
 ## Something isnt working here...
 
-master_less <- master_less[,1:8] %>% 
+master_less <- master_less[,1:9] %>% 
   rename(famid = `Fam..`,
          sampid = Sample.Name,
          ssex = Sample_Sex) %>% 
@@ -52,8 +55,8 @@ master_less <- master_less[,1:8] %>%
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
          sampid = str_trim(sampid, side = "both"),
          ssex = str_to_lower(as.character(ssex))) %>% # Sex on lower case only
-  mutate_at(vars(starts_with("Leaf")), as.numeric) %>% # Make them all numeric 
-  group_by(famid) %>% 
+  mutate_at(vars(starts_with("Leaf_")), as.numeric) %>% # Make them all numeric 
+  group_by(ID) %>% 
   arrange(sampid, .by_group = TRUE) #%>% # Order by family number
   ungroup
 ```
