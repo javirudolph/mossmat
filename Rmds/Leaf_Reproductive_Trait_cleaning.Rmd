@@ -38,7 +38,8 @@ master_less <- master%>%
          Avg_Male_Buds.Stem, Avg_Arch)  
 
 #Add in unique identifier
-master_less$ID <- seq.int(nrow(master_less))
+master_less$ID <- c(1:nrow(master_less))
+#seq.int(nrow(master_less))
 str(master_less)
 
 ```
@@ -55,9 +56,10 @@ master_less <- master_less[,1:9] %>%
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
          sampid = str_trim(sampid, side = "both"),
          ssex = str_to_lower(as.character(ssex))) %>% # Sex on lower case only
+  mutate_at(vars(starts_with("Leaf_")), as.character) %>%
   mutate_at(vars(starts_with("Leaf_")), as.numeric) %>% # Make them all numeric 
   group_by(ID) %>% 
-  arrange(sampid, .by_group = TRUE) #%>% # Order by family number
+  arrange(sampid, .by_group = TRUE) %>% # Order by family number
   ungroup
 ```
 
@@ -95,6 +97,9 @@ str(master_less)
 master_less$Leaf_Average_Area <-  as.numeric(str_replace(master_less$Leaf_Average_Area, "#DIV/0", "NA"))
 master_less$Leaf_Length_Average <-  as.numeric(str_replace(master_less$Leaf_Length_Average, "#DIV/0", "NA"))
 master_less$Leaf_perimeter_average <-  as.numeric(str_replace(master_less$Leaf_perimeter_average, "#DIV/0", "NA"))
+
+
+
 ```
 
 
@@ -115,8 +120,10 @@ master_less %>%
   distinct() %>% 
   full_join(., reprovar) %>% 
   distinct() %>%
-  set_names(c("Family", "Sample", "Sex", "raw_repro", "repro","leaf_length", "leaf_area",
-              "leaf_perim")) -> L_R_Traits
+  set_names(c("Family", "Sample", "Sex","leaf_length", "leaf_area",
+              "leaf_perim", "raw_repro", "repro")) -> L_R_Traits
+saveRDS(L_R_Traits, "cleandata/Final_leaf_reproduction_traits.RDS")
+
 ```
 
 
@@ -129,7 +136,7 @@ master_less %>%
   facet_wrap( ~ trait, scales = "free")
 
 reprovar %>% 
-  select(-c(famid, sampid, Avg_Male_Buds.Stem, Avg_Arch)) %>% 
+  select(-c(sampid,ssex, Avg_Male_Buds.Stem, Avg_Arch)) %>% 
   gather(key = "trait", value = "raw_values") %>% 
   ggplot(aes(x = raw_values, y = ..density..)) +
   geom_histogram(na.rm = TRUE, fill = "#8e9998") +
