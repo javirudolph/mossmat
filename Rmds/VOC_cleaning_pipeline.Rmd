@@ -1,0 +1,243 @@
+---
+title: "VOC_Low_abundances"
+author: "Leslie Kollar"
+date: "12/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 14, fig.height = 4)
+```
+
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(vegan)
+library(plotly)
+library(corrplot)
+library(ggpubr)
+library(Hmisc)
+theme_set(theme_bw())
+
+setwd("/Users/lesliekollar/Desktop/Moss_matrix")
+getwd
+```
+
+```{r}
+#Unable to read data in... had to do it manually
+#This is the cleaned volatile data with dates of the PTR collection.
+voc_data <- voc_clean10_wdates
+```
+
+# this is to use ggplot
+```{r}
+## For the volatile data
+long_voc_data <- voc_data  %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, Date.PTR, ssex))%>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+## For the background data
+long_background <- VOC_Background  %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, Date.PTR, ssex))%>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+## Replacing all NAs with 0s in background data
+long_background[is.na(long_background)] <- 0
+```
+
+#Plotting VOCs and background
+```{r}
+#VOC plot
+long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+
+#Background plot
+long_background %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+#Plotting VOCs by dates
+```{r}
+#plotting VOCs
+long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot(aes(colour= factor(Date.PTR))) +
+  theme_bw() + 
+  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
+  theme(axis.text.x = element_text(angle = 90))
+
+#plotting background
+long_background %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot(aes(colour= factor(Date.PTR))) +
+  theme_bw() + 
+  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+nsamp <- nrow(voc_data)
+# What if we just check the number of zeroes in each?
+long_voc_data %>% 
+  filter(conc == 0) %>% 
+  group_by(sampid) %>% 
+  tally() %>% 
+  ggplot(aes(x = voc, y = n/nsamp)) +
+  labs(y = "Proportion of zeroes in data") +
+  geom_col() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  mutate(famid = as.numeric(famid)) %>% 
+  ggplot(., aes(x = voc, y = conc, color = famid)) +
+  geom_point(alpha = 0.4) +
+  scale_color_viridis_c() +
+  facet_wrap(~ ssex) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90))
+
+long_background %>% 
+  filter(conc > 0) %>% 
+  mutate(famid = as.numeric(famid)) %>% 
+  ggplot(., aes(x = voc, y = conc, color = famid)) +
+  geom_point(alpha = 0.4) +
+  scale_color_viridis_c() +
+  facet_wrap(~ ssex) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r facetPlot, fig.height=12}
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank()) +
+  scale_color_viridis_d(begin = 0.2, end = 0.8)
+```
+
+## Log data
+
+With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf. This actually makes it easy to see that there are some outliers that should probably just be considered a zero. It is pretty clear that most of the compounds we are interested in are in a range.
+
+
+#With log data
+```{r}
+long_voc_data %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+
+long_background %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+```
+#Log transformed data seperated by date
+```{r}
+#Volatile data
+long_voc_data %>% 
+  filter(conc > 0)%>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot(aes(colour= factor(Date.PTR))) +
+  theme_bw() + 
+  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
+  theme(axis.text.x = element_text(angle = 90))+
+  scale_y_log10()
+
+#Background
+long_background %>%
+  filter(conc > 0)%>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot(aes(colour= factor(Date.PTR))) +
+  theme_bw() + 
+  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
+  theme(axis.text.x = element_text(angle = 90))+
+  scale_y_log10() 
+```  
+
+#Statistically comparing background for each day of collection
+```{r}
+#The background data doesnt look too awful in terms of variablility. It may be work while to run an anovoa comparing dates for each compond
+
+#We can run simple ANOVAs however, if it is background air we expect some variation with different people being around are other variables that change daily. These backgrounds are meant to account for variances in the lab air. However, I think these are important to eye-ball to check the machine. The samples that did not run well on certain dates should have really weird background air too...It is more important to compare these weird dates with their bakcgrounds for machine error. 
+
+#Everything is significant but this would make sense. Why would background air be the same for each date?
+formulae <- lapply(colnames(voc_clean10_wdates)[5:ncol(voc_clean10_wdates)], function(x) as.formula(paste0(x, " ~ Date.PTR")))
+lapply(formulae, function(x) summary(aov(x, data = voc_clean10_wdates)))
+```
+
+#With raw data
+```{r}
+long_voc_data %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) 
+
+long_background %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) 
+  
+```
+
+#With the information, we can clean the VOC data again and remove these outliers.
+```{r}
+# Making these outliers be zero. Using a cut off of 10e-10
+# Confirm cutoff with GCMS data as well... talk with Danlyn
+
+voc_data[voc_data < 10e-10] <- 0
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, Date.PTR, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = famid, shape = ssex)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10() +
+  scale_color_viridis_c()
+```
+
+
+```{r fig.height=12}
+#Plotting each family
+long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  scale_y_log10() +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_color_viridis_d(begin = 0.2, end = 0.8)
+```
+
+
+
+

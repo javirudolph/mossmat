@@ -19,6 +19,8 @@ library(plotly)
 library(corrplot)
 library(ggpubr)
 library(Hmisc)
+library(dplyr)
+library(tidyr)
 
 theme_set(theme_bw())
 ```
@@ -306,12 +308,12 @@ We are only going to keep the compounds for which at least 10% of the samples ha
 ```{r}
 voc_raw %>% 
   filter(Date.PTR != "30-May") %>% 
-  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>%  
-  dplyr::select(-Date.PTR) -> vocs
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) #%>%  
+  #dplyr::select(-Date.PTR) -> vocs
 
 # Create a dataset with only the compounds for which at least 10% of the observations show it.
 vocs %>% 
-  select(-famid, -sampid, -ssex) %>% 
+  select(-famid, -sampid,-Date.PTR, -ssex) %>% 
   mutate_if(is.numeric, function(x) ifelse(x > 0, 1, 0)) %>% 
   colSums() %>% 
   data.frame() %>% 
@@ -322,17 +324,18 @@ vocs %>%
 
 # This one keeps the clones data
 vocs %>% 
-  select(famid, sampid, ssex, c(voc_filter$voc)) -> voc_clones
+  select(famid, sampid, Date.PTR, ssex, c(voc_filter$voc)) -> voc_clones
 
 # This one considers both clones, and keeps only the biggest value for each of the compounds
 vocs %>% 
-  select(famid, sampid, ssex, c(voc_filter$voc)) %>% 
+  select(famid, sampid, Date.PTR, ssex, c(voc_filter$voc)) %>% 
   group_by(sampid) %>%
   mutate_at(vars(starts_with("m")), max) %>% # This is selecting the maximum value for all the volatiles
   ungroup () %>% 
   distinct() -> voc_data
 
-#saveRDS(voc_data, "Nov22_2019/clean_vocs.RDS")
+#Saving data with dates
+saveRDS(voc_data, "cleandata/voc_clean10_wdates.RDS")
 
 ```
 
