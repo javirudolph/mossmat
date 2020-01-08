@@ -17,22 +17,182 @@ library(plotly)
 library(corrplot)
 library(ggpubr)
 library(Hmisc)
+library(vegan)
 theme_set(theme_bw())
 
-setwd("/Users/lesliekollar/Desktop/Moss_matrix")
-getwd
+
 ```
 
+We are going to be working with the VOC data and make the clusters but using the clones.
+
 ```{r}
-#Unable to read data in... had to do it manually
+# Read in the raw data
+rawdata <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
+```
+
+
+# Base cleaning
+- Remove other traits  
+- Remove NAs at the end  
+- Change names  
+- Standardize sampleID names (no special characters)
+
+```{r}
+# Just keep volatile data and identifiers
+# Also, remove the NAs, there's a lot at the end
+# Remove '(2)' notation from sample ids
+
+#names(rawdata)
+voc_raw <- rawdata[,c(1,2,4,5, 20:109)] %>% 
+  rename(famid = `Fam..`,
+         sampid = Sample.Name,
+         ssex = Sample_Sex) %>% 
+  drop_na() %>% 
+  mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
+         sampid = str_trim(sampid, side = "both"))
+
+#' Shorten voc names
+oldnames <- names(voc_raw)
+names(voc_raw)[5:94] <- stringr::str_trunc(oldnames[5:94], width = 6, side = "right", ellipsis = "")
+
+```
+
+There was an issue with the notation in one of the compounds, so we check that and fix the notation so that R can recognize the values as numbers.
+```{r}
+#str(voc_raw)
+#' m111.0 is a character
+#voc_raw$m111.0
+#' The notation is different, using a capital E
+voc_raw$m111.0 <- as.numeric(str_replace(voc_raw$m111.0, "E", "e"))
+```
+
+# May 30
+Removing samples from May 30. These were off, and you can check the figures from the EDA_clean_master.Rmd which includes all the figures about it. Here, we are also making any negative values be equal to zero.
+```{r}
+voc_raw %>% 
+  filter(Date.PTR != "30-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) %>% 
+  dplyr::select(-Date.PTR) -> vocs
+
+voc_raw %>% 
+  filter(Date.PTR != "29-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) %>% 
+  dplyr::select(-Date.PTR) -> vocs
+
+voc_raw %>% 
+  filter(Date.PTR != "23-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) %>% 
+  dplyr::select(-Date.PTR) -> vocs
+```
+
+# 10% threshold 
+```{r}
+# Create a dataset with only the compounds for which at least 10% of the observations show it.
+vocs %>% 
+  select(-famid, -sampid, -ssex) %>% 
+  mutate_if(is.numeric, function(x) ifelse(x > 0, 1, 0)) %>% 
+  colSums() %>% 
+  data.frame() %>% 
+  rownames_to_column() %>%
+  setNames(., c("voc", "count")) %>% 
+  mutate(prcnt = count/nrow(vocs)) %>% 
+  filter(prcnt >= 0.1) -> voc_filter
+
+vocs %>% 
+  select(famid, sampid, ssex, c(voc_filter$voc)) %>% 
+  mutate(ssex = str_to_lower(as.character(ssex))) -> voc_data
+```
+
+# Exploration with clones
+```{r}
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+
+long_voc_data %>%
+  ggplot(aes(x = voc, y = conc)) +
+  geom_point() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90))
+
+long_voc_data %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+
+```
+
+We see that there are three big outliers. The values are so small and over the machine's detection thresold, so we will make them equal to zero.
+
+```{r}
+# Making these outliers be zero
+voc_data[voc_data < 1e-15 & voc_data>0] <- 0
+
+long_voc_data <- voc_data %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+```
+
+```{r eval = FALSE}
+long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  lims(y = c(1e-13, 1e-05)) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+
+```
+##****End initial VOC cleaning saved cleaned vocs as VOC_clean_up_w_clones
+
+
+#Loading data that was previously cleaned in "VOC_clean_up_w_clones""
+Here is what has been done to the data at this point...
+- Removed outliers below 10e-15
+-Simplified VOC names
+-used a 10% Threshold
+-removed only may 30
+-Removed NAs
+-Clones are NOT averaged, taken highest value, or median. Right now the clones exist. We do not need to worry about the clones until the variance and covariance matrix parts.
+
+```{r}
 #This is the cleaned volatile data with dates of the PTR collection.
 voc_data <- voc_clean10_wdates
 ```
+Unable to read data in... had to do it manually
 
-# this is to use ggplot
+# Removing May 23 and May 29th
+Graphs showed the data didnt look so good for these dates so I am removing it here and continuing on in the analyses
 ```{r}
-## For the volatile data
+voc_data %>% 
+  filter(Date.PTR != "29-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) -> vocs_no_29
+
+vocs_no_29 %>% 
+  filter(Date.PTR != "23-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) -> vocs_no_29_23
+
+```
+
+# Making the data for VOCs and background long for ggplot
+```{r}
+## For the volatile data with all
 long_voc_data <- voc_data  %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, Date.PTR, ssex))%>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+## For the volatile data without May 23 and 29
+long_voc_data_no <- vocs_no_29_23  %>% 
   gather(., key = "voc", value = "conc", -c(famid, sampid, Date.PTR, ssex))%>% 
   mutate(voc = factor(voc, levels = unique(voc)))
 
@@ -45,10 +205,18 @@ long_background <- VOC_Background  %>%
 long_background[is.na(long_background)] <- 0
 ```
 
-#Plotting VOCs and background
+#Plotting raw data for VOCs and background
+Looks like there is very few changes when looking at the graphs this way between with 23 and 29 and without.
 ```{r}
-#VOC plot
+#VOC plot with all dates
 long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_point() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90))
+
+#VOC plot without May 23 and 29
+long_voc_data_no %>% 
   ggplot(aes(x = voc, y = conc)) + 
   geom_point() +
   theme_bw() + 
@@ -63,10 +231,18 @@ long_background %>%
 ```
 
 
-#Plotting VOCs by dates
+#Plotting raw VOCs and background by dates
 ```{r}
-#plotting VOCs
+#plotting VOCs with 23 and 29
 long_voc_data %>% 
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot(aes(colour= factor(Date.PTR))) +
+  theme_bw() + 
+  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
+  theme(axis.text.x = element_text(angle = 90))
+
+#plotting VOCs without 23 and 29
+long_voc_data_no %>% 
   ggplot(aes(x = voc, y = conc)) + 
   geom_boxplot(aes(colour= factor(Date.PTR))) +
   theme_bw() + 
@@ -81,6 +257,7 @@ long_background %>%
   facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
   theme(axis.text.x = element_text(angle = 90))
 ```
+Background is difficult to view in the raw form.
 
 
 ```{r}
@@ -96,9 +273,21 @@ long_voc_data %>%
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 90))
 ```
+This doesnt work...
 
 ```{r}
+#Plotting VOC and raw background data and coloring by sex. Removed zeros to help visualize
 long_voc_data %>% 
+  filter(conc > 0) %>% 
+  mutate(famid = as.numeric(famid)) %>% 
+  ggplot(., aes(x = voc, y = conc, color = famid)) +
+  geom_point(alpha = 0.4) +
+  scale_color_viridis_c() +
+  facet_wrap(~ ssex) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90))
+
+long_voc_data_no %>% 
   filter(conc > 0) %>% 
   mutate(famid = as.numeric(famid)) %>% 
   ggplot(., aes(x = voc, y = conc, color = famid)) +
@@ -119,9 +308,18 @@ long_background %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-
 ```{r facetPlot, fig.height=12}
+#Plotting VOC data and coloring by sex. Removed zeros to help visualize. Plotted by family 1-46
 long_voc_data %>% 
+  filter(conc > 0) %>% 
+  ggplot(aes(x = voc, y = conc, color = ssex)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~famid, ncol = 6) +
+  theme(axis.text.x = element_blank()) +
+  scale_color_viridis_d(begin = 0.2, end = 0.8)
+
+#Missing May 23 and 29
+long_voc_data_no %>% 
   filter(conc > 0) %>% 
   ggplot(aes(x = voc, y = conc, color = ssex)) +
   geom_point(alpha = 0.5) +
@@ -130,13 +328,21 @@ long_voc_data %>%
   scale_color_viridis_d(begin = 0.2, end = 0.8)
 ```
 
-## Log data
+### Log data
 
 With these figures it is very clear that the compounds are at different scales, so we might want to log transform them and check the result, to compare with the first figure. I have chosen not to include the zeroes here since log10(0) = -inf. This actually makes it easy to see that there are some outliers that should probably just be considered a zero. It is pretty clear that most of the compounds we are interested in are in a range.
 
 
-#With log data
+#Plotting with removed zeros and with log data
 ```{r}
+long_voc_data_no %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+
 long_voc_data %>% 
   filter(conc > 0) %>%
   ggplot(aes(x = voc, y = conc)) + 
@@ -153,10 +359,21 @@ long_background %>%
   theme(axis.text.x = element_text(angle = 90)) +
   scale_y_log10()
 ```
-#Log transformed data seperated by date
+Data is actually viewable once we remove the zeros and log transform the data. However we will want to add 1 or the smallest value when doing this for the analyses. Also, we have fewer outliers when we look at the no May 23 and 29
+
+#Log transformed and zeros removed data seperated by date
 ```{r}
 #Volatile data
 long_voc_data %>% 
+  filter(conc > 0)%>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot(aes(colour= factor(Date.PTR))) +
+  theme_bw() + 
+  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
+  theme(axis.text.x = element_text(angle = 90))+
+  scale_y_log10()
+
+long_voc_data_no %>% 
   filter(conc > 0)%>%
   ggplot(aes(x = voc, y = conc)) + 
   geom_boxplot(aes(colour= factor(Date.PTR))) +
@@ -175,6 +392,8 @@ long_background %>%
   theme(axis.text.x = element_text(angle = 90))+
   scale_y_log10() 
 ```  
+
+Looks like it may be worth removing dates 23 and 29. The backgrounds for those dates look fine which suggests the machine is working just fine but for some reason that entire day is an outlier.... 
 
 #Statistically comparing background for each day of collection
 ```{r}
@@ -196,6 +415,13 @@ long_voc_data %>%
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 90)) 
 
+long_voc_data_no %>% 
+  filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) 
+
 long_background %>% 
   filter(conc > 0) %>%
   ggplot(aes(x = voc, y = conc)) + 
@@ -205,16 +431,36 @@ long_background %>%
   
 ```
 
-#With the information, we can clean the VOC data again and remove these outliers.
+#With the information, we can clean the VOC data again and remove these outliers (set a cut off) of the samples without May 23, 29 and 30.
+The final data file here is named "vocs_no_29_23". This file is not log transformed but all weird dates and outliers are removed. 
 ```{r}
 # Making these outliers be zero. Using a cut off of 10e-10
 # Confirm cutoff with GCMS data as well... talk with Danlyn
 
+#Cuttoff at 10e-10 in original data file
 voc_data[voc_data < 10e-10] <- 0
-long_voc_data <- voc_data %>% 
+
+#Remove May 29 in original data file
+voc_data %>% 
+  filter(Date.PTR != "29-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) -> vocs_no_29
+
+#Remove May 23 data in file from previous step
+vocs_no_29 %>% 
+  filter(Date.PTR != "23-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) -> vocs_no_29_23
+
+#Mutate long-wise
+long_voc_data_no <- vocs_no_29_23 %>% 
   gather(., key = "voc", value = "conc", -c(famid, sampid, Date.PTR, ssex)) %>% 
   mutate(voc = factor(voc, levels = unique(voc)))
-long_voc_data %>% 
+
+#Print final data file to cleandata in github
+#saveRDS(vocs_no_29_23, file = "cleandata/VOC_cleaned_12_31.RDS")
+
+long_voc_data_no %>% 
   filter(conc > 0) %>% 
   ggplot(aes(x = voc, y = conc, color = famid, shape = ssex)) + 
   geom_point() +
@@ -224,10 +470,10 @@ long_voc_data %>%
   scale_color_viridis_c()
 ```
 
-
+#Plotting final data by family
 ```{r fig.height=12}
 #Plotting each family
-long_voc_data %>% 
+long_voc_data_no %>% 
   filter(conc > 0) %>% 
   ggplot(aes(x = voc, y = conc, color = ssex)) +
   geom_point(alpha = 0.5) +
@@ -239,5 +485,102 @@ long_voc_data %>%
 ```
 
 
+# All log transformations will be log + 1 for values with zeros
+At this point the data ("voc_no_29_23") has been manipulated by...
+-removed May 23,29, and 30
+- set cut off at 10e-15
+-removed NA
+-10% threshold
+-clones are still there and left alone -> not sure what to do about these clones...
 
+#Rename data file to something easier and more descriptive
+```{r}
+clean_voc_clones <- vocs_no_29_23
+
+pairs(clean_voc_clones[,5:79],
+      lower.panel = NULL, 
+      col = as.numeric(clean_voc_clones$ssex))
+```
+
+#Log transformation and then ordination
+```{r, fig.width=2.75,fig.height=4.5}
+#Log transform data but add 1e-12 to zeros because you cannot log transform zeros
+log_vocs <- clean_voc_clones %>% 
+  mutate_at(vars(starts_with("m")), list(~ log10(. + 1e-12)))
+
+#Run PCA on log transformed data
+log_pca <- rda(log_vocs[,5:79])
+
+# Figure for log transformed data
+biplot(log_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+ssex.colors <- levels(factor(log_vocs$ssex))
+ordihull(log_pca, group = factor(log_vocs$ssex),
+         col = c("green","blue"))
+legend("topright", 
+       col = c("green", "blue"),
+       lty = 1,
+       legend = ssex.colors)
+
+```
+
+#Log transformation, scale and then ordination
+```{r, fig.width=2.75,fig.height=4.5}
+#Scale log transformed data
+log_st_vocs <- log_vocs %>% 
+  mutate_at(vars(starts_with("m")), scale)
+
+
+#Run PCA
+log_st_pca <- rda(log_st_vocs[,5:79])
+
+# Figure for log transformed data
+biplot(log_st_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+ssex.colors <- levels(factor(log_vocs$ssex))
+ordihull(log_pca, group = factor(log_vocs$ssex),
+         col = c("green","blue"))
+legend("topright", 
+       col = c("green", "blue"),
+       lty = 1,
+       legend = ssex.colors)
+
+
+```
+I am not sure I see a different in the log transformed data and the logtransformed + scaled data. I think moving forward its best to use the logtransformed and scaled data.
+
+### PCA reducation chosing axes that explain 80% of the total variance and eigenvalues have to be above 1
+```{r}
+#Scree plot shows a lot of the variation is explained in PC1
+screeplot(log_st_pca)
+abline(a=1,b=0)
+
+## How do we know how many to chose?
+summary(log_st_pca)
+
+#Expressed as cummalitve percentages
+round(cumsum(100*log_st_pca$CA$eig/sum(log_st_pca$CA$eig)),2)
+
+```
+We want to get about 80% of the total variation captured. The first 17 PC capture 80% of the variance... Is this too many?
+
+##Criteria for keeping axes
+-Retain axes (principle components) such that the cumulative proportions explained by the axes just exceeds 80%. For us this is the first 17 which seems like a lot.
+
+-Since the sum of the eigenvalues (in variance units) is equal to the number of original variables, purely random axes rotations should yield eigenvalues of approximately 1 for each principle component. Therefore eigenvalues greater than one indicate that the new axis is explaining more than its share of the original variance. Conversely, eigenvalues less than one correspond to variables that explain less than their share. This gets us to the first 13.
+
+-Can also look for "elbows in the scree plot". Here there is a major elbow in between PCA 1 and 2.
+
+** For this data set I think we should keep the first 13?
+
+##Practice if we want to pull out the first 13 eigenvalues 
+I am not sure how to interpret this because it runs each eigenvalue through but how do we contribute this to a certain trait?
+```{r}
+data.lm <- lm(log_st_pca$CA$u[,1:13]~ log_st_vocs$ssex)
+summary(data.lm)
+```
 

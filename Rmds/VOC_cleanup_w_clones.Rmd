@@ -72,10 +72,21 @@ voc_raw %>%
   mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
   arrange(sampid, .by_group = TRUE) %>% 
   dplyr::select(-Date.PTR) -> vocs
+
+voc_raw %>% 
+  filter(Date.PTR != "29-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) %>% 
+  dplyr::select(-Date.PTR) -> vocs
+
+voc_raw %>% 
+  filter(Date.PTR != "23-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) %>% 
+  dplyr::select(-Date.PTR) -> vocs
 ```
 
-# 10% threshold  
-
+# 10% threshold 
 ```{r}
 # Create a dataset with only the compounds for which at least 10% of the observations show it.
 vocs %>% 
@@ -94,8 +105,6 @@ vocs %>%
 ```
 
 # Exploration with clones
-
-
 ```{r}
 long_voc_data <- voc_data %>% 
   gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
@@ -127,7 +136,6 @@ voc_data[voc_data < 1e-15 & voc_data>0] <- 0
 long_voc_data <- voc_data %>% 
   gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
   mutate(voc = factor(voc, levels = unique(voc)))
-
 
 ```
 
@@ -178,6 +186,11 @@ ggarrange(long_vocs %>%
   theme(axis.text.x = element_text(angle = 90),
         legend.position = "bottom"), nrow = 2)
 ```
+
+
+#### Practice G matrix stuff....
+Here we practice correlations with heirarchial clustering. For the real paper we may use a PCA reduction to reduce VOCs
+
 
 #### Correlations
 I would be careful with these correlations, because they are taking each sample/clone as an independent observation. However, we know that these clones are not genetically independent. There should be a way to constrain or account for that relationship in this correlation.

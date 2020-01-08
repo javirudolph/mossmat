@@ -38,6 +38,8 @@ data_traits$Week_3_perimeter <- as.numeric(str_replace(data_traits$Week_3_perime
 #Filtering out rows with NAs because scale doees not like NA
 data_traits %>% 
    filter_all(any_vars(is.na(.)))
+
+data_traits[is.na(data_traits)] <- 0
 ```
 
 ```{r}
@@ -167,6 +169,7 @@ scaled_traits %>%
   geom_histogram(na.rm = TRUE, fill = "#7e9bcc") +
   facet_wrap( ~ trait, scales = "free")
 
+scaled_traits <- scaled_traits[,1:9]
 
 ```
 
@@ -174,9 +177,52 @@ scaled_traits %>%
 
 
 ```{r}
-saveRDS(scaled_traits, "cleandata/Final_growth_dev_traits.RDS")
+#saveRDS(scaled_traits, "cleandata/Final_growth_dev_traits.RDS")
 ```
 
+##Running ordination on growth and development traits
+```{r}
+#Run PCA
+scaled_pca <- rda(scaled_traits[,5:9])
 
+
+
+# Figure for log transformed data
+biplot(scaled_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+ssex.colors <- levels(factor(trait$Sex))
+ordihull(scaled_pca, group = factor(trait$Sex),
+         col = c("green","blue"))
+legend("topright", 
+       col = c("green", "blue"),
+       lty = 1,
+       legend = ssex.colors)
+
+
+```
+
+```{r}
+### PCA reducation chosing axes that explain 80% of the total variance and eigenvalues have to be above 1
+#Scree plot shows a lot of the variation is explained in PC1
+screeplot(scaled_pca)
+abline(a=1,b=0)
+
+## How do we know how many to chose?
+summary(scaled_pca)
+
+#Expressed as cummalitve percentages
+round(cumsum(100*scaled_pca$CA$eig/sum(scaled_pca$CA$eig)),2)
+
+```
+
+##Practice if we want to pull out the first 3 eigenvalues 
+I am not sure how to interpret this because it runs each eigenvalue through but how do we contribute this to a certain trait?
+```{r}
+data.lm <- lm(scaled_pca$CA$u[,1:3]~ trait$Sex)
+summary(data.lm)
+```
+First three PC account for 88% of the total variation. I would absolutely keep the first three.
 
 
