@@ -11,8 +11,6 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, fig.width = 14, fig.height 
 ```
 
 ## Data cleaning for life history traits
-
-
 ```{r libraries}
 library(tidyverse)
 library(vegan)
@@ -24,6 +22,7 @@ library(ggmosaic)
 
 
 ```{r dataload}
+setwd("/Users/lesliekollar/Desktop/Moss_matrix/")
 data_traits <- read.csv("rawdata/Data_Growth_experiment_summer_2017_not_all.csv")
 ```
 
@@ -57,9 +56,7 @@ trait <- data_traits %>%
 
 trait$Week_3_Circularity <- as.numeric(trait$Week_3_Circularity)
 
-# Add unique ID to each clone
-trait$ID <- seq.int(nrow(trait))
-str(trait)
+
 
 ```
 
@@ -151,6 +148,8 @@ trait %>%
   ggplot(aes(x = raw_values, y = ..density..)) +
   geom_histogram(na.rm = TRUE, fill = "#8e9998") +
   facet_wrap( ~ trait, scales = "free")
+#Remove Sex=x
+trait<-trait[!(trait$Sex=="x"),]
 
 #saveRDS( , "cleandata/scaled_traits_Nov_26")
 ```
@@ -163,7 +162,7 @@ trait %>%
   mutate_at(c(5:9), scale) -> scaled_traits
 
 scaled_traits %>% 
-  select(-c(Family, Sample, Sex, Plate, ID)) %>% 
+  select(-c(Family, Sample, Sex, Plate)) %>% 
   gather(key = "trait", value = "raw_values") %>% 
   ggplot(aes(x = raw_values, y = ..density..)) +
   geom_histogram(na.rm = TRUE, fill = "#7e9bcc") +
@@ -201,6 +200,7 @@ legend("topright",
        legend = ssex.colors)
 
 
+
 ```
 
 ```{r}
@@ -225,4 +225,122 @@ summary(data.lm)
 ```
 First three PC account for 88% of the total variation. I would absolutely keep the first three.
 
+#Univariate
 
+```{r}
+
+#Among family variances for week 3 perimeter
+Among_Family_P <- lme(Week_3_perimeter ~ Sex, random =~ 1|Family + 1|Plate, data = trait)
+anova(Among_Family_P)
+summary(Among_Family_P)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = Week_3_perimeter ~ Sex + (1|Family) + (1|Plate),data = trait, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula = Week_3_perimeter ~  (1|Family) + (1|Plate) ,data = trait, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+```
+```{r}
+
+#Among family variances for week 3 area
+Among_Family_A <- lme(Week_3_area ~ Sex, random =~ 1|Family+ 1|Plate, data = trait)
+anova(Among_Family_A)
+summary(Among_Family_A)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = Week_3_area ~ Sex + (1|Family)+ (1|Plate), data = trait, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula = Week_3_area ~  (1|Family)+ (1|Plate) ,data = trait, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+```
+
+
+```{r}
+#Among family variances for Days until Gam.
+Among_Family_D <- lme(Days_until_gametophores~ Sex, random =~ 1|Family + 1|Plate, data = trait)
+anova(Among_Family_D)
+summary(Among_Family_D)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula =Days_until_gametophores ~ Sex + (1|Family) + (1|Plate),data = trait, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula =Days_until_gametophores ~  (1|Family)+ (1|Plate) ,data = trait, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+```
+
+```{r}
+
+#Among family variances for week 3 circularity
+Among_Family_C <- lme(Week_3_Circularity~ Sex, random =~ 1|Family+ 1|Plate, data = trait)
+anova(Among_Family_C)
+summary(Among_Family_C)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = Week_3_Circularity ~ Sex + (1|Family)+ (1|Plate),data = trait, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula =Week_3_Circularity ~  (1|Family)+ (1|Plate) ,data = trait, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+```
+
+```{r}
+#Among family variances for total gametophores
+Among_Family_T <- lme(Total_Gametophores~ Sex, random =~ 1|Family+ 1|Plate, data = trait)
+anova(Among_Family_T)
+summary(Among_Family_T)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = Total_Gametophores ~ Sex + (1|Family)+ (1|Plate),data = trait, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula =Total_Gametophores ~  (1|Family)+ (1|Plate) ,data = trait, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+```
