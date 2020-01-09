@@ -2,7 +2,9 @@
 title: "VOC_Low_abundances"
 author: "Leslie Kollar"
 date: "12/3/2019"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -165,7 +167,8 @@ Here is what has been done to the data at this point...
 
 ```{r}
 #This is the cleaned volatile data with dates of the PTR collection.
-voc_data <- voc_clean10_wdates
+voc_data  <- readRDS("cleandata/voc_clean10_wdates.RDS")
+
 ```
 Unable to read data in... had to do it manually
 
@@ -197,12 +200,12 @@ long_voc_data_no <- vocs_no_29_23  %>%
   mutate(voc = factor(voc, levels = unique(voc)))
 
 ## For the background data
-long_background <- VOC_Background  %>% 
-  gather(., key = "voc", value = "conc", -c(famid, sampid, Date.PTR, ssex))%>% 
-  mutate(voc = factor(voc, levels = unique(voc)))
+#long_background <- VOC_Background  %>% 
+ # gather(., key = "voc", value = "conc", -c(famid, sampid, Date.PTR, ssex))%>% 
+  #mutate(voc = factor(voc, levels = unique(voc)))
 
 ## Replacing all NAs with 0s in background data
-long_background[is.na(long_background)] <- 0
+#long_background[is.na(long_background)] <- 0
 ```
 
 #Plotting raw data for VOCs and background
@@ -223,11 +226,11 @@ long_voc_data_no %>%
   theme(axis.text.x = element_text(angle = 90))
 
 #Background plot
-long_background %>% 
-  ggplot(aes(x = voc, y = conc)) + 
-  geom_point() +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 90))
+#long_background %>% 
+ # ggplot(aes(x = voc, y = conc)) + 
+  #geom_point() +
+  #theme_bw() + 
+  #theme(axis.text.x = element_text(angle = 90))
 ```
 
 
@@ -250,28 +253,28 @@ long_voc_data_no %>%
   theme(axis.text.x = element_text(angle = 90))
 
 #plotting background
-long_background %>% 
-  ggplot(aes(x = voc, y = conc)) + 
-  geom_boxplot(aes(colour= factor(Date.PTR))) +
-  theme_bw() + 
-  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
-  theme(axis.text.x = element_text(angle = 90))
+#long_background %>% 
+ # ggplot(aes(x = voc, y = conc)) + 
+  #geom_boxplot(aes(colour= factor(Date.PTR))) +
+  #theme_bw() + 
+  #facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
+  #theme(axis.text.x = element_text(angle = 90))
 ```
 Background is difficult to view in the raw form.
 
 
 ```{r}
-nsamp <- nrow(voc_data)
+
 # What if we just check the number of zeroes in each?
-long_voc_data %>% 
-  filter(conc == 0) %>% 
-  group_by(sampid) %>% 
-  tally() %>% 
-  ggplot(aes(x = voc, y = n/nsamp)) +
-  labs(y = "Proportion of zeroes in data") +
-  geom_col() +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 90))
+#long_voc_data %>% 
+#  filter(conc == 0) %>% 
+#  group_by(sampid) %>% 
+#  tally() %>% 
+#  ggplot(aes(x = voc, y = n/nsamp)) +
+# labs(y = "Proportion of zeroes in data") +
+#  geom_col() +
+#  theme_bw() + 
+#  theme(axis.text.x = element_text(angle = 90))
 ```
 This doesnt work...
 
@@ -297,15 +300,15 @@ long_voc_data_no %>%
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90))
 
-long_background %>% 
-  filter(conc > 0) %>% 
-  mutate(famid = as.numeric(famid)) %>% 
-  ggplot(., aes(x = voc, y = conc, color = famid)) +
-  geom_point(alpha = 0.4) +
-  scale_color_viridis_c() +
-  facet_wrap(~ ssex) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90))
+#long_background %>% 
+ # filter(conc > 0) %>% 
+#  mutate(famid = as.numeric(famid)) %>% 
+ # ggplot(., aes(x = voc, y = conc, color = famid)) +
+#geom_point(alpha = 0.4) +
+ # scale_color_viridis_c() +
+#  facet_wrap(~ ssex) +
+ # theme_bw() +
+#  theme(axis.text.x = element_text(angle = 90))
 ```
 
 ```{r facetPlot, fig.height=12}
@@ -351,13 +354,13 @@ long_voc_data %>%
   theme(axis.text.x = element_text(angle = 90)) +
   scale_y_log10()
 
-long_background %>% 
-  filter(conc > 0) %>%
-  ggplot(aes(x = voc, y = conc)) + 
-  geom_boxplot() +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 90)) +
-  scale_y_log10()
+#long_background %>% 
+#  filter(conc > 0) %>%
+#  ggplot(aes(x = voc, y = conc)) + 
+#  geom_boxplot() +
+#  theme_bw() + 
+#  theme(axis.text.x = element_text(angle = 90)) +
+#  scale_y_log10()
 ```
 Data is actually viewable once we remove the zeros and log transform the data. However we will want to add 1 or the smallest value when doing this for the analyses. Also, we have fewer outliers when we look at the no May 23 and 29
 
@@ -383,14 +386,14 @@ long_voc_data_no %>%
   scale_y_log10()
 
 #Background
-long_background %>%
-  filter(conc > 0)%>%
-  ggplot(aes(x = voc, y = conc)) + 
-  geom_boxplot(aes(colour= factor(Date.PTR))) +
-  theme_bw() + 
-  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
-  theme(axis.text.x = element_text(angle = 90))+
-  scale_y_log10() 
+#long_background %>%
+ # filter(conc > 0)%>%
+#  ggplot(aes(x = voc, y = conc)) + 
+#  geom_boxplot(aes(colour= factor(Date.PTR))) +
+#  theme_bw() + 
+#  facet_wrap(~Date.PTR, nrow = 4, scale= "free_y")+
+#  theme(axis.text.x = element_text(angle = 90))+
+# scale_y_log10() 
 ```  
 
 Looks like it may be worth removing dates 23 and 29. The backgrounds for those dates look fine which suggests the machine is working just fine but for some reason that entire day is an outlier.... 
@@ -402,8 +405,8 @@ Looks like it may be worth removing dates 23 and 29. The backgrounds for those d
 #We can run simple ANOVAs however, if it is background air we expect some variation with different people being around are other variables that change daily. These backgrounds are meant to account for variances in the lab air. However, I think these are important to eye-ball to check the machine. The samples that did not run well on certain dates should have really weird background air too...It is more important to compare these weird dates with their bakcgrounds for machine error. 
 
 #Everything is significant but this would make sense. Why would background air be the same for each date?
-formulae <- lapply(colnames(voc_clean10_wdates)[5:ncol(voc_clean10_wdates)], function(x) as.formula(paste0(x, " ~ Date.PTR")))
-lapply(formulae, function(x) summary(aov(x, data = voc_clean10_wdates)))
+#formulae <- lapply(colnames(voc_clean10_wdates)[5:ncol(voc_clean10_wdates)], function(x) as.formula(paste0(x, " ~ Date.PTR")))
+#lapply(formulae, function(x) summary(aov(x, data = voc_clean10_wdates)))
 ```
 
 #With raw data
@@ -422,12 +425,12 @@ long_voc_data_no %>%
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 90)) 
 
-long_background %>% 
-  filter(conc > 0) %>%
-  ggplot(aes(x = voc, y = conc)) + 
-  geom_boxplot() +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 90)) 
+#long_background %>% 
+#  filter(conc > 0) %>%
+#  ggplot(aes(x = voc, y = conc)) + 
+#  geom_boxplot() +
+#  theme_bw() + 
+#  theme(axis.text.x = element_text(angle = 90)) 
   
 ```
 
@@ -497,15 +500,45 @@ At this point the data ("voc_no_29_23") has been manipulated by...
 ```{r}
 clean_voc_clones <- vocs_no_29_23
 
-pairs(clean_voc_clones[,5:79],
-      lower.panel = NULL, 
-      col = as.numeric(clean_voc_clones$ssex))
+#pairs(clean_voc_clones[,5:79],
+  #    lower.panel = NULL, 
+   #   col = as.numeric(clean_voc_clones$ssex))
 ```
+
+#Checking to see if there are enough samples per family to look at
+```{r}
+# First we create a merged family id + sex indicator variable
+famid.and.sex <- paste0(clean_voc_clones$famid,clean_voc_clones$ssex)
+clean_voc_clones$famid.and.sex <- famid.and.sex  
+
+# Then we use this new indicator variable to count number of reps per fam per sex
+nsamp.perfamNsex2 <- table(clean_voc_clones$famid.and.sex)
+allfamidsNsex2 <- names(nsamp.perfamNsex2)
+
+# Now we locate families to be removed because they lack replication 
+where.onesamp2 <- which(nsamp.perfamNsex2==1,arr.ind=TRUE)
+fams2rm2 <- allfamidsNsex2[where.onesamp2]
+
+# Finally we locate where in the original data set (i.e. which row) these families are
+# and save those row numbers to later remove them
+rows2rm2 <- list()
+for(i in 1:length(fams2rm2)){
+	rows2rm2[[i]] <- which(as.character(clean_voc_clones$famid)==substr(fams2rm2[i], start=1,stop=1))
+}
+rows2rm2.vec <- unlist(rows2rm2)
+
+# Remove the rows of the families and sex without replicates
+clean_voc_clones_2 <- clean_voc_clones[-rows2rm2.vec,]
+
+clean_voc_clones_2$famid
+```
+We definitel lose quite a few families with this.
+
 
 #Log transformation and then ordination
 ```{r, fig.width=2.75,fig.height=4.5}
 #Log transform data but add 1e-12 to zeros because you cannot log transform zeros
-log_vocs <- clean_voc_clones %>% 
+log_vocs <- clean_voc_clones_2 %>% 
   mutate_at(vars(starts_with("m")), list(~ log10(. + 1e-12)))
 
 #Run PCA on log transformed data
