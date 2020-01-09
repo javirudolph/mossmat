@@ -18,14 +18,14 @@ library(plotly)
 library(corrplot)
 library(ggpubr)
 library(Hmisc)
+library(lme4)
+library(nlme)
 theme_set(theme_bw())
 ```
 ## Leaf and Reproduction Data
 The leaf and reproductive measurements were all taken on the plants with the volatile data so this data matches up exactly. 
 
-
 ```{r dataload}
-setwd("/Users/lesliekollar/Desktop/Moss_matrix/")
 master <- read.csv("rawdata/LK_master.csv")
 ```
 
@@ -33,33 +33,35 @@ master <- read.csv("rawdata/LK_master.csv")
 #Selecting only the data we want
 #I am not sure if I grabbed the right sex traits but I think these are most interesting yet still need to be better compared. 
 
-master_less <- master%>%
+master_less <- master[1:619,]%>%
   select(Fam.., Sample.Name, Sample_Sex, Leaf_Length_Average, Leaf_Average_Area, Leaf_perimeter_average,
          Avg_Male_Buds.Stem, Avg_Arch)  
 
-#seq.int(nrow(master_less))
-str(master_less)
 
-#Filtering out rows with NAs because scale doees not like NA
-master_less %>% 
-   filter_all(any_vars(is.na(.)))
-
-master_less[is.na(master_less)] <- 0
 ```
 
 ```{r}
+# Removing DIV/0
+str(master_less)
+master_less$Leaf_Average_Area <-  as.numeric(str_replace(master_less$Leaf_Average_Area, "#DIV/0", "NA"))
+master_less$Leaf_Length_Average <-  as.numeric(str_replace(master_less$Leaf_Length_Average, "#DIV/0", "NA"))
+master_less$Leaf_perimeter_average <-  as.numeric(str_replace(master_less$Leaf_perimeter_average, "#DIV/0", "NA"))
 
-## Something isnt working here...
+#This will put zeros in even for the NAs in the reprodctive measurements
+master_less[is.na(master_less)] <- 0
 
-master_less <- master_less[,1:8] %>% 
-  rename(famid = `Fam..`,
+```
+
+
+```{r}
+## 
+master_less <- master_less %>% 
+  rename(famid = Fam..,
          sampid = Sample.Name,
          ssex = Sample_Sex) %>% 
-  drop_na(famid) %>% 
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
-         sampid = str_trim(sampid, side = "both"),
-         ssex = str_to_lower(as.character(ssex))) %>% # Sex on lower case only
-  mutate_at(vars(starts_with("Leaf_")), as.character) %>%
+      sampid = str_trim(sampid, side = "both"),
+       ssex = str_to_lower(as.character(ssex))) %>% # Sex on lower case only
   mutate_at(vars(starts_with("Leaf_")), as.numeric) %>% # Make them all numeric 
   arrange(sampid, .by_group = TRUE) %>% # Order by family number
   ungroup
@@ -69,38 +71,52 @@ master_less <- master_less[,1:8] %>%
 
 #Scaling reproductive traits. I think these traits are much better to use. The other is percent expression and females are more difficult to find. I think these are way more accurate measurements.
 
+#Male clones included
 master_less %>% 
   filter(ssex == "m") %>% 
-  select(sampid, ssex, Avg_Male_Buds.Stem)%>% 
+  select(sampid, ssex, famid, Avg_Male_Buds.Stem)%>% 
   drop_na() %>% 
   #group_by(sampid) %>% 
   #summarise(raw_av = mean(Avg_Male_Buds.Stem)) %>% 
   mutate(reprovar = scale( Avg_Male_Buds.Stem),
          ssex = "m")  -> male_reprovar
 
+#Male clones averaged
 master_less %>% 
-  select(sampid, ssex, Avg_Arch) %>% 
+  filter(ssex == "m") %>% 
+  select(sampid, ssex, famid, Avg_Male_Buds.Stem)%>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(raw_av = mean(Avg_Male_Buds.Stem)) %>% 
+  mutate(reprovar = scale(raw_av),
+         ssex = "m")  -> male_reprovar_avg
+
+#Female clones included
+master_less %>% 
+  select(sampid, ssex, famid, Avg_Arch) %>% 
   filter(ssex == "f") %>% 
   drop_na() %>% 
   #group_by(sampid) %>% 
   mutate(reprovar = scale(Avg_Arch),
          ssex = "f") -> fem_reprovar
 
+#Female clones averaged
+master_less %>% 
+  select(sampid, ssex, famid, Avg_Arch) %>% 
+  filter(ssex == "f") %>% 
+  drop_na() %>% 
+  group_by(sampid) %>% 
+  summarise(raw_av = mean(Avg_Arch)) %>% 
+  mutate(reprovar = scale(raw_av),
+         ssex = "f") -> fem_reprovar_avg
 
+
+#Combining datasets
 reprovar <- bind_rows(male_reprovar, fem_reprovar)
+reprovar_avg <- bind_rows(male_reprovar_avg, fem_reprovar_avg)
 head(reprovar)
 
 #Did not combine with leaf data because different numbers of samples?
-
-```
-```{r}
-# Removing DIV/0
-str(master_less)
-master_less$Leaf_Average_Area <-  as.numeric(str_replace(master_less$Leaf_Average_Area, "#DIV/0", "NA"))
-master_less$Leaf_Length_Average <-  as.numeric(str_replace(master_less$Leaf_Length_Average, "#DIV/0", "NA"))
-master_less$Leaf_perimeter_average <-  as.numeric(str_replace(master_less$Leaf_perimeter_average, "#DIV/0", "NA"))
-
-
 
 ```
 
@@ -113,12 +129,44 @@ master_less[,4:6] %>%
   geom_boxplot()
 
 ```
+#Checking to makae sure we have enough of each sex in each family
+```{r}
+# Removing instances where there's not two or more measurements per sex, per family:
+#We should be fine with this data 
 
+# First we create a merged family id + sex indicator variable
+famid.and.sex <- paste0(master_less$famid,master_less$ssex)
+master_less$famid.and.sex <- famid.and.sex 
+
+# Then we use this new indicator variable to count number of reps per fam per sex
+nsamp.perfamNsex <- table(master_less$famid.and.sex)
+allfamidsNsex <- names(nsamp.perfamNsex)
+
+# Now we locate families to be removed because they lack replication 
+where.onesamp <- which(nsamp.perfamNsex==1,arr.ind=TRUE)
+fams2rm <- allfamidsNsex[where.onesamp]
+
+# Finally we locate where in the original data set (i.e. which row) these families are
+# and save those row numbers to later remove them
+rows2rm <- list()
+for(i in 1:length(fams2rm)){
+	rows2rm[[i]] <- which(as.character(master_less$famid)==substr(fams2rm[i], start=1,stop=1))
+}
+rows2rm.vec <- unlist(rows2rm)
+
+# Remove the rows of the families and sex without replicates
+#master_less2 <- master_less[-rows2rm.vec,]
+#length(table(master_less$famid))
+
+master_less$famid.and.sex <- NULL
+```
 
 
 ```{r}
+
+#Averaging clones for leaf data so that we can put leaf and repro in same data sheet if we ever need to maybe for eigenvale reduction. 
 master_less %>% 
-  select(famid, sampid, ssex, Leaf_Length_Average, Leaf_Average_Area, Leaf_perimeter_average) %>% 
+  select(famid, sampid, ssex, Leaf_Length_Average, Leaf_Average_Area, Leaf_perimeter_average)%>%
   distinct() %>% 
   full_join(., reprovar) %>% 
   distinct() %>%
@@ -131,7 +179,7 @@ L_R_Traits <- L_R_Traits[,1:8]
 #Removing raw_repro column
 L_R_Traits$raw_repro <- NULL 
 
-saveRDS(L_R_Traits, "cleandata/Final_leaf_reproduction_traits.RDS")
+#saveRDS(L_R_Traits, "cleandata/Final_leaf_reproduction_traits.RDS")
 
 ```
 
@@ -164,6 +212,7 @@ I am not sure when I should scale here. I dont think I should scale the leaf dat
 
 The matrix data will be transformed and scaled together in the same data frame!
 ```{r}
+L_R_Traits[is.na(L_R_Traits)] <- 0
 scaled_L_R <- scale(L_R_Traits[,4:7])
 ```
 
@@ -173,7 +222,7 @@ scaled_L_R <- scale(L_R_Traits[,4:7])
 scaled_pca <- rda(scaled_L_R)
 
 
-# Figure for log transformed data
+# Figure for scaled data
 biplot(scaled_pca, display = c("sites", 
                    "species"),
        type = c("text",
@@ -211,6 +260,168 @@ summary(data.lm)
 ```
 
 
+#Univariate analyses
+Interpretation: Smaller the AIC and BIC the better
+```{r}
+str(master_less)
+master_less$famid <- as.factor(master_less$famid)
+
+#Among family variances for leaf length
+Among_Family_LL <- lme(Leaf_Length_Average ~ ssex, random =~ 1|famid, data = master_less)
+anova(Among_Family_LL)
+summary(Among_Family_LL)
+
+
+#Rather than using a pvalue we can compare with BIC
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = Leaf_Length_Average ~ ssex + (1|famid),data = master_less, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula = Leaf_Length_Average ~ (1|famid) ,data = master_less, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+
+#Exort Pvalue to matrix of unrestricted model
+
+
+```
+```{r}
+str(master_less)
+master_less$famid <- as.factor(master_less$famid)
+
+#Among family variances for leaf areaa
+Among_Family_LA <- lme(Leaf_Average_Area ~ ssex, random =~ 1|famid, data = master_less)
+anova(Among_Family_LA)
+summary(Among_Family_LA)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = Leaf_Average_Area ~ ssex + (1|famid),data = master_less, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula = Leaf_Average_Area ~ (1|famid) ,data = master_less, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+
+#Exort Pvalue to matrix of unrestricted model
+```
+```{r}
+str(master_less)
+master_less$famid <- as.factor(master_less$famid)
+
+#Among family variances for leaf perimeter
+Among_Family_LP <- lme(Leaf_perimeter_average ~ ssex, random =~ 1|famid, data = master_less)
+anova(Among_Family_LP)
+summary(Among_Family_LP)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = Leaf_perimeter_average ~ ssex + (1|famid),data = master_less, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula = Leaf_perimeter_average ~ (1|famid) ,data = master_less, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+
+#Exort Pvalue to matrix of unrestricted model
+
+```
+```{r}
+#Among family variances for reprovar
+Among_Family_repro <- lme(reprovar ~ ssex, random =~ 1|famid, data = reprovar)
+anova(Among_Family_repro)
+summary(Among_Family_repro)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = reprovar ~ ssex + (1|famid),data = reprovar, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula = reprovar ~ (1|famid) ,data = reprovar, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+
+#Exort Pvalue to matrix of unrestricted model
+```
+
+```{r}
+#Is there among family variance for eah sex?
+#I am not sure how to do this?
+
+Gv_Sex_LL <- lmer(Leaf_Length_Average ~ ssex, random =~ 1|famid, group= ssex, data = master_less)
+anova(Gv_Sex_LL)
+summary(Gv_Sex_LL)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = reprovar ~ ssex + (1|famid),data = reprovar, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula = reprovar ~ (1|famid) ,data = reprovar, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+
+```
+```{r}
+#Does the among family variance for each sex differ?
+
+Gv_Sex_LL <- lme(Leaf_Length_Average ~ ssex, random =~ 1|famid + (1|famid+ssex), data =master_less)
+anova(Gv_Sex_LL)
+summary(Gv_Sex_LL)
+
+#Compute a model where the effect of sex is estimated
+unrestricted_fit= lmer(
+  formula = reprovar ~ ssex + (1|famid),data = reprovar, REML = F)
+BIC(unrestricted_fit)
+AIC(unrestricted_fit)
+
+#Compute a model where the effect of sex is not estimated
+restricted_fit= lmer(
+  formula = reprovar ~ (1|famid) ,data = reprovar, REML = F)
+BIC(restricted_fit)
+AIC(restricted_fit)
+
+#Compute the AIC-corrected log-base-2 likelihood ratio
+#What is this?
+(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+
+```
 
 
 
