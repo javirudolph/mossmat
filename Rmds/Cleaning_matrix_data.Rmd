@@ -68,6 +68,24 @@ trait_raw$Leaf_perimeter_average <-  as.numeric(str_replace(trait_raw$Leaf_perim
 
 ```
 
+# Removing May 23, 29, and 30
+```{r}
+trait_raw %>% 
+  filter(Date.PTR!= "30-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE)-> trait_raw_3
+
+trait_raw_3 %>% 
+  filter(Date.PTR != "29-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) -> trait_raw_2
+
+trait_raw_2 %>% 
+  filter(Date.PTR != "23-May") %>%
+  mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
+  arrange(sampid, .by_group = TRUE) -> trait_raw
+```
+
 #### Leaf traits
 First, we visually check for outliers or values that may not make sense. There are NAs in the dataset which will be problematic but some will be taken care of when we average them
 ```{r}
@@ -254,7 +272,8 @@ voc_raw <- master[,c(1,2,4,5, 20:109)] %>%
          ssex = Sample_Sex) %>% 
   drop_na() %>% 
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
-         sampid = str_trim(sampid, side = "both"))
+         sampid = str_trim(sampid, side = "both"),
+         ssex = str_to_lower(as.character(ssex)))
 
 #Shorten voc names
 oldnames <- names(voc_raw)
@@ -307,7 +326,7 @@ vocs_3 %>%
 #Taking the max for each VOC
 #The distinct function is not working
 vocs_3 %>% 
-  select(famid, sampid, Date.PTR, ssex, c(voc_filter$voc)) %>% 
+  select(famid, sampid, ssex, c(voc_filter$voc)) %>% 
   group_by(sampid) %>%
   mutate_at(vars(starts_with("m")), max) %>% # This is selecting the maximum value for all the volatiles
   distinct() -> voc_data
@@ -317,7 +336,7 @@ vocs_3 %>%
 # Exploration with clones
 ```{r}
 long_voc_data <- voc_data %>% 
-  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex,Date.PTR)) %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
   mutate(voc = factor(voc, levels = unique(voc)))
 
 long_voc_data %>%
@@ -346,7 +365,7 @@ voc_data[voc_data < 1e-15 & voc_data>0] <- 0
 voc_data[voc_data < 10e-10] <- 0
 
 long_voc_data <- voc_data %>% 
-  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex, Date.PTR)) %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
   mutate(voc = factor(voc, levels = unique(voc)))
 ```
 
@@ -375,15 +394,23 @@ log_vocs <- voc_data %>%
 ### Master dataframe
 This will create the master data frame that includes the lifehistory traits and the VOC clustered data. Also, there is one row per individual, which means the data for clones has either been averaged(for traits) or the max value has been taken (volatiles).
 ```{r}
+
 clean_master <- full_join(traits, log_vocs) %>% 
   mutate_at(c(5:32), as.numeric)
 
 clean_master$Date.PTR <- NULL
+print(clean_master)
+write_csv(clean_master, "/Users/lesliekollar/Desktop/Moss_matrix/cleandata/clean_master_Jan_13.csv")
 
+
+#Scaling the data
 clean_master_scaled <- clean_master %>% 
   mutate_at(vars(starts_with("r")), scale)
+print(clean_master_scaled)
+write_csv(clean_master_scaled, "/Users/lesliekollar/Desktop/Moss_matrix/cleandata/clean_master_scaled_Jan_13.csv")
 
-saveRDS(clean_master, "cleandata/clean_master_Jan_09.RDS")
+saveRDS(clean_master, "cleandata/clean_master_Jan_13.RDS")
+#Still some NAs
 
 #Run PCA
 #Cannot run on missing values
@@ -420,10 +447,166 @@ round(cumsum(100*log_st_pca$CA$eig/sum(log_st_pca$CA$eig)),2)
 
 
 ```
+#Covariance matrix for female life history triats
+```{r}
+mynamestheme <- theme(plot.title = element_text(family = "Arial", face = "bold", size = (20)), 
+                 legend.title = element_text(colour = "black",  face = "bold.italic", family = "Arial"), 
+                 legend.text = element_text(face = "italic", colour="black",family = "Arial"), 
+                  axis.title = element_text(family = "Arial", size = (13), colour = "Black"),
+                  axis.text = element_text(family = "Arial", colour = "black", size = (10)))
+  
+
+clean_master_scaled[,1:15] %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_fems
+
+cov_mat_fems %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  mynamestheme +
+  ggtitle("Female life history trait covariance matrix")+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+#Correlation matrix females life history traits
+
+```{r}
+cov_mat_fems <- as.matrix(cov_mat_fems)
+cor_mat_fems <- (cov2cor(cov_mat_fems))
+females_life <- corrplot(cor_mat_fems, title= "Correlation matrix females life history traits", tl.col = "black", mar=c(0,2,1,1))
+```
+
+#Life history trait covariance matrix for males
+```{r}
+clean_master_scaled[,1:15] %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_male
+
+cov_mat_male %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000") +
+  mynamestheme+
+  ggtitle("Male trait data covariance matrix")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+#Correlation matrix males life history traits
+```{r}
+cov_mat_male <- as.matrix(cov_mat_male)
+cor_mat_male <- (cov2cor(cov_mat_male))
+Males_life <- corrplot(cor_mat_male, title= "Correlation matrix males life history traits", tl.col = "black", mar=c(0,2,1,1))
+```
+
+#ALL TRAIT DATA COVARIANCE MATRIX but not seperated by sex.
+```{r}
+clean_master_scaled[,1:15] %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_all
+
+cov_mat_all %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  mynamestheme+
+  ggtitle("All trait data covariance. Sexes not seperated out")+
+  labs(x= "Family means all sexes", y="Family means all sexes")+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+Correlation matrix for all life history traits
+```{r}
+
+cov_mat_all <- as.matrix(cov_mat_all)
+cor_mat_all <- (cov2cor(cov_mat_all))
+Males_life <- corrplot(cor_mat_all ,title= "Correlation matrix all life history traits. Not seperate by sex", tl.col = "black", mar=c(0,2,1,1))
+```
+
+#All traits by filtering with only families shared between males and females. Plotted males vs females
+All traits filtered males v females covariance
+```{r}
+
+
+clean_master_scaled %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() -> male_data
+
+clean_master_scaled %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex, raw_repro)) %>% 
+  distinct() %>% 
+  filter(famid %in% male_data$famid) -> fem_data
+
+# Use only the families that have both males and females
+test_cov <- cov(male_data[,2:12], fem_data[,2:12], use = "pairwise.complete.obs")
+test_cor <- cor(male_data[,2:12], fem_data[,2:12])
+
+
+test_cov %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  labs(x="Male", y="Female")+
+  ggtitle("Covariance matrix of life histroy data for males vs females")+
+  mynamestheme+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+```{r}
+#Correlation matrix
+test_cor %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+labs(x="Male", y="Female")+
+  ggtitle("Correlation matrix of life histroy data for males vs females")+
+  mynamestheme+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90))
+```
 
 
 
-Should I get rid of the rates and raw repro values?
-Cannot get values to be one row. Otherwise good.
-Developmental values are not normally distrubuted either way. Will this affect a PCA.
+
 
