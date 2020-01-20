@@ -179,7 +179,10 @@ L_R_Traits <- L_R_Traits[,1:8]
 #Removing raw_repro column
 L_R_Traits$raw_repro <- NULL 
 
-#saveRDS(L_R_Traits, "cleandata/Final_leaf_reproduction_traits.RDS")
+L_R_Traits%>%
+  distinct()->L_R_Traits_d
+
+saveRDS(L_R_Traits, "cleandata/reproduction_traits.RDS")
 
 ```
 
@@ -262,166 +265,393 @@ summary(data.lm)
 
 #Univariate analyses
 Interpretation: Smaller the AIC and BIC the better
+
+#Leaf length
 ```{r}
-str(master_less)
+
 master_less$famid <- as.factor(master_less$famid)
 
-#Among family variances for leaf length
-Among_Family_LL <- lme(Leaf_Length_Average ~ ssex, random =~ 1|famid, data = master_less)
-anova(Among_Family_LL)
-summary(Among_Family_LL)
+#Are these traits sexually dimorphic for their means? 9.121407
+Among_Family_LL_w_sex <- lmer(Leaf_Length_Average~ ssex + (1|famid) +  (1|famid:ssex) , data = master_less, REML = FALSE, na.action = na.omit)
 
+Among_Family_LL_n_sex <- lmer(Leaf_Length_Average~ (1|famid) +  (1|famid:ssex), data = master_less, REML = FALSE, na.action = na.omit)
 
-#Rather than using a pvalue we can compare with BIC
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = Leaf_Length_Average ~ ssex + (1|famid),data = master_less, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
+VarCorr(Among_Family_LL_n_sex)
 
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula = Leaf_Length_Average ~ (1|famid) ,data = master_less, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
+summary(Among_Family_LL_w_sex)
+summary(Among_Family_LL_n_sex)
 
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
-
-#Exort Pvalue to matrix of unrestricted model
-
+#Comparing models where sex could have an affect. -4.694448
+BIC_compare_LL_sex_compare <- BIC(Among_Family_LL_n_sex)-BIC(Among_Family_LL_w_sex)
+output_Llength <- lsmeans(Among_Family_LL_w_sex, ~ssex)
 
 ```
 ```{r}
-str(master_less)
-master_less$famid <- as.factor(master_less$famid)
+
+#Are these traits sexually dimorphic for their variances? 8.196384
+
+trait_L <- transform(master_less,
+          obs=factor(1:nrow(master_less)),
+          Sexdummy=as.numeric(ssex=="m"))
+Among_family_LL_w_sex_constrained <- lmer(Leaf_Length_Average~ssex+
+     (1|famid) + (1|famid:ssex) + (Sexdummy-1|obs), 
+     trait_L, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
+
+summary(Among_family_LL_w_sex_constrained)
+
+#Compare effect of sex when variance is constrained to be equal
+
+BIC_compare_LL_sex_compare_constrained <- BIC(Among_family_LL_w_sex_constrained)-BIC(Among_Family_LL_w_sex)
+```
+
+
+```{r}
+#Are these traits dimorphic for their variances? 16.45776
+
+trait_6 <- transform(master_less,
+          obs=factor(1:nrow(master_less)),
+          Sexdummy=as.numeric(ssex=="m"))
+Among_family_LL_w_sex_constrained <- lmer(Leaf_Length_Average~ssex+
+     (1|famid) + (1|famid:ssex) + (Sexdummy-1|obs), 
+     trait_6, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
+
+summary(Among_family_LL_w_sex_constrained)
+
+#Compare effect of sex when variance is constrained to be equal
+
+BIC_compare_LL_sex_compare_constrained <- BIC(Among_family_LL_w_sex_constrained)-BIC(Among_Family_LL_w_sex)
+
+```
+
+```{r}
+#Does the interaction of family and sex have an effect? -0.1316159
+
+Among_Family_LL_n_sex_int<- lmer(Leaf_Length_Average ~ ssex + (1|famid), data = master_less)
+
+
+Among_Family_LL_w_sex_int<- lmer(Leaf_Length_Average ~ ssex + (1|famid) + (1|famid:ssex), data = master_less)
+
+summary(Among_Family_LL_w_sex_int)
+summary(Among_Family_LL_n_sex_int)
+
+BIC_compare_LL_sex_compare_int <- BIC(Among_Family_LL_n_sex_int)-BIC(Among_Family_LL_w_sex_int)
+
+```
+```{r}
+#Does the among family variance differ? -6.406537
+Among_Family_LL_Fam <- lmer(Leaf_Length_Average~ ssex + (1|famid:ssex) +(1|famid)  , data = master_less, REML = FALSE, na.action = na.omit)
+
+Among_Family_LL_n_Fam <- lmer(Leaf_Length_Average~ ssex + (1|famid:ssex) , data = master_less, REML = FALSE, na.action = na.omit)
+
+BIC_compare_LL_Fam_compare <- BIC(Among_Family_LL_n_Fam)-BIC(Among_Family_LL_Fam)
+
+```
+
+```{r}
+#Plot the interaction of family and sex.
+
+means <- 
+  master_less%>%
+  #filter out females 
+  filter(ssex=='m')%>%
+  group_by(famid)%>%
+  summarise(mean=mean(Leaf_Length_Average))
+
+myorder_length_L <- means$famid[order(means$mean)]
+
+  ggplot(master_less, mapping= aes(x =famid,  y = Leaf_Length_Average, fill = ssex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Leaf length",
+                           breaks = seq(0, 2.5,4.5), 
+                           limits=c(0, 4.5)) +
+        ggtitle("Boxplot of leaf length per sex") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_length_L)
+
+
+```
+
+#Leaf area
+```{r}
 
 #Among family variances for leaf areaa
-Among_Family_LA <- lme(Leaf_Average_Area ~ ssex, random =~ 1|famid, data = master_less)
-anova(Among_Family_LA)
-summary(Among_Family_LA)
 
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = Leaf_Average_Area ~ ssex + (1|famid),data = master_less, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
+#Does sex have an affect on means?
+Among_Family_LA_w_sex<- lmer(Leaf_Average_Area ~ ssex + (1|famid) + (1|famid:ssex), data = master_less)
 
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula = Leaf_Average_Area ~ (1|famid) ,data = master_less, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
+Among_Family_LA_n_sex<- lmer(Leaf_Average_Area ~  (1|famid)+ (1|famid:ssex), data = master_less)
 
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+summary(Among_Family_LA_w_sex)
+summary(Among_Family_LA_n_sex)
 
-#Exort Pvalue to matrix of unrestricted model
-```
-```{r}
-str(master_less)
-master_less$famid <- as.factor(master_less$famid)
-
-#Among family variances for leaf perimeter
-Among_Family_LP <- lme(Leaf_perimeter_average ~ ssex, random =~ 1|famid, data = master_less)
-anova(Among_Family_LP)
-summary(Among_Family_LP)
-
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = Leaf_perimeter_average ~ ssex + (1|famid),data = master_less, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
-
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula = Leaf_perimeter_average ~ (1|famid) ,data = master_less, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
-
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
-
-#Exort Pvalue to matrix of unrestricted model
-
-```
-```{r}
-#Among family variances for reprovar
-Among_Family_repro <- lme(reprovar ~ ssex, random =~ 1|famid, data = reprovar)
-anova(Among_Family_repro)
-summary(Among_Family_repro)
-
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = reprovar ~ ssex + (1|famid),data = reprovar, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
-
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula = reprovar ~ (1|famid) ,data = reprovar, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
-
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
-
-#Exort Pvalue to matrix of unrestricted model
+BIC_compare_LA_sex_compare <- BIC(Among_Family_LA_n_sex)-BIC(Among_Family_LA_w_sex)
+output_Larea <- lsmeans(Among_Family_LA_w_sex, ~ssex)
 ```
 
 ```{r}
-#Is there among family variance for eah sex?
-#I am not sure how to do this?
+#Are these traits sexually dimorphic for their variances? 8.196384
 
-Gv_Sex_LL <- lmer(Leaf_Length_Average ~ ssex, random =~ 1|famid, group= ssex, data = master_less)
-anova(Gv_Sex_LL)
-summary(Gv_Sex_LL)
+trait_7 <- transform(master_less,
+          obs=factor(1:nrow(master_less)),
+          Sexdummy=as.numeric(ssex=="m"))
+Among_family_LA_w_sex_constrained <- lmer(Leaf_Average_Area~ssex+
+     (1|famid) + (1|famid:ssex) + (Sexdummy-1|obs), 
+     trait_7, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
 
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = reprovar ~ ssex + (1|famid),data = reprovar, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
+summary(Among_family_LA_w_sex_constrained)
 
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula = reprovar ~ (1|famid) ,data = reprovar, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
+#Compare effect of sex when variance is constrained to be equal
 
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+BIC_compare_LA_sex_compare_constrained <- BIC(Among_family_LA_w_sex_constrained)-BIC(Among_Family_LA_w_sex)
 
 ```
+
+
+```{r}
+#Does additive genetic variance for leaf area differ among sexes?
+Among_Family_LA_w_sex_int<- lmer(Leaf_Average_Area ~ ssex + (1|famid) + (1|famid:ssex), data = master_less)
+
+Among_Family_LA_n_sex_int<- lmer(Leaf_Average_Area ~ ssex + (1|famid), data = master_less)
+
+
+summary(Among_Family_LA_w_sex_int)
+summary(Among_Family_LA_n_sex_int)
+
+BIC_compare_LA_int_compare <- BIC(Among_Family_LA_w_sex_int)-BIC(Among_Family_LA_n_sex_int)
+
+```
+
+```{r}
+#Does the among family variance differ? -6.406537
+Among_Family_LA_Fam <- lmer(Leaf_Average_Area~ ssex + (1|famid:ssex) +(1|famid)  , data = master_less, REML = FALSE, na.action = na.omit)
+
+Among_Family_LA_n_Fam <- lmer(Leaf_Average_Area~ ssex + (1|famid:ssex) , data = master_less, REML = FALSE, na.action = na.omit)
+
+BIC_compare_LA_Fam_compare <- BIC(Among_Family_LA_n_Fam)-BIC(Among_Family_LA_Fam)
+
+```
+
+```{r}
+#Plot the interaction of family and sex.
+
+means <- 
+  master_less%>%
+  #filter out females 
+  filter(ssex=='m')%>%
+  group_by(famid)%>%
+  summarise(mean=mean(Leaf_Average_Area))
+
+myorder_area_L <- means$famid[order(means$mean)]
+
+  ggplot(master_less, mapping= aes(x =famid,  y = Leaf_Average_Area, fill = ssex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Leaf area",
+                           breaks = seq(0, .5,1), 
+                           limits=c(0, 1)) +
+        ggtitle("Boxplot of leaf area per sex") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_area_L)
+
+
+```
+
+#Leaf perimeter
+```{r}
+#Does Sex have an affect? 25.70148
+Among_Family_LP_w_sex<- lmer(Leaf_perimeter_average ~ ssex + (1|famid) + (1|famid:ssex), data = master_less)
+Among_Family_LP_n_sex<- lmer(Leaf_perimeter_average ~  (1|famid)+ (1|famid:ssex), data = master_less)
+
+summary(Among_Family_LP_w_sex)
+summary(Among_Family_LP_n_sex)
+
+BIC_compare_LP_sex_compare <- BIC(Among_Family_LP_n_sex)-BIC(Among_Family_LP_w_sex)
+
+output_Lperm <- lsmeans(Among_Family_LP_w_sex, ~ssex)
+```
+
+```{r}
+#Are these traits sexually dimorphic for their variances?  6.428105
+
+trait_8 <- transform(master_less,
+          obs=factor(1:nrow(master_less)),
+          Sexdummy=as.numeric(ssex=="m"))
+Among_family_LP_w_sex_constrained <- lmer(Leaf_perimeter_average~ssex+
+     (1|famid) + (1|famid:ssex) + (Sexdummy-1|obs), 
+     trait_8, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
+
+summary(Among_family_LP_w_sex_constrained)
+
+#Compare effect of sex when variance is constrained to be equal
+
+BIC_compare_LP_sex_compare_constrained <- BIC(Among_family_LP_w_sex_constrained)-BIC(Among_Family_LP_w_sex)
+```
+
 ```{r}
 #Does the among family variance for each sex differ?
+Among_Family_LP_w_sex_int<- lmer(Leaf_perimeter_average ~ ssex + (1|famid)  + (1|famid:ssex), data = master_less)
 
-Gv_Sex_LL <- lme(Leaf_Length_Average ~ ssex, random =~ 1|famid + (1|famid+ssex), data =master_less)
-anova(Gv_Sex_LL)
-summary(Gv_Sex_LL)
+Among_Family_LP_w_sex_n_int<- lmer(Leaf_perimeter_average ~ ssex + (1|famid) , data = master_less)
 
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = reprovar ~ ssex + (1|famid),data = reprovar, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
 
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula = reprovar ~ (1|famid) ,data = reprovar, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
+summary(Among_Family_LP_w_sex_int)
+summary(Among_Family_LP_w_sex_n_int)
 
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+BIC_compare_LP_sex_compare_int <- BIC(Among_Family_LP_w_sex_n_int)-BIC(Among_Family_LP_w_sex_int)
+```
+
+```{r}
+#Does the among family variance differ? -6.406537
+Among_Family_LP_Fam <- lmer(Leaf_perimeter_average~ ssex + (1|famid:ssex) +(1|famid)  , data = master_less, REML = FALSE, na.action = na.omit)
+
+Among_Family_LP_n_Fam <- lmer(Leaf_perimeter_average~ ssex + (1|famid:ssex) , data = master_less, REML = FALSE, na.action = na.omit)
+
+BIC_compare_LP_Fam_compare <- BIC(Among_Family_LP_n_Fam)-BIC(Among_Family_LP_Fam)
 
 ```
+
+
+```{r}
+#Plot the interaction of family and sex.
+
+means <- 
+  master_less%>%
+  #filter out females 
+  filter(ssex=='m')%>%
+  group_by(famid)%>%
+  summarise(mean=mean(Leaf_perimeter_average))
+
+myorder_perm_L <- means$famid[order(means$mean)]
+
+  ggplot(master_less, mapping= aes(x =famid,  y = Leaf_perimeter_average, fill = ssex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Leaf perimeter",
+                           breaks = seq(0, 5, 25), 
+                           limits=c(0, 15)) +
+        ggtitle("Boxplot of leaf perimeter per sex") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_perm_L)
+
+
+```
+
+
+
+#Repro
+```{r} 
+
+
+#Does sex have an affect?-9.744196
+Among_Family_r_w_sex<- lmer(repro ~ Sex + (1|Family), data = L_R_Traits)
+Among_Family_r_n_sex<- lmer(repro ~  (1|Family), data = L_R_Traits)
+
+summary(Among_Family_r_w_sex)
+summary(Among_Family_r_n_sex)
+
+BIC_compare_r_sex_compare <- BIC(Among_Family_r_n_sex)-BIC(Among_Family_r_w_sex)
+output_repro <- lsmeans(Among_Family_r_w_sex, ~Sex)
+```
+
+```{r}
+#Are these traits sexually dimorphic for their variances? -12.03937
+
+trait_9 <- transform(L_R_Traits,
+          obs=factor(1:nrow(L_R_Traits)),
+          Sexdummy=as.numeric(Sex=="m"))
+Among_family_r_w_sex_constrained <- lmer(repro~Sex+
+     (1|Family) + (1|Family:Sex) + (Sexdummy-1|obs), 
+     trait_9, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
+
+summary(Among_family_r_w_sex_constrained)
+
+#Compare effect of sex when variance is constrained to be equal
+
+BIC_compare_r_sex_compare_constrained <- BIC(Among_family_r_w_sex_constrained)-BIC(Among_Family_r_w_sex)
+```
+
+```{r}
+#Does the among family variance for each sex differ? 18.91357
+Among_Family_r_w_sex_int<- lmer(repro ~ Sex + (1|Family)  + (1|Family:Sex), data = L_R_Traits)
+
+Among_Family_r_w_sex_n_int<- lmer(repro ~ Sex + (1|Family) , data = L_R_Traits)
+
+
+summary(Among_Family_r_w_sex_int)
+summary(Among_Family_r_w_sex_n_int)
+
+BIC_compare_r_sex_compare_int <- BIC(Among_Family_r_w_sex_n_int)-BIC(Among_Family_r_w_sex_int)
+
+```
+
+```{r}
+
+#Does the among family variance for each sex differ? -6.553841
+Among_Family_r_w_sex_fam<- lmer(repro ~ Sex + (1|Family)  + (1|Family:Sex), data = L_R_Traits)
+
+Among_Family_r_w_sex_n_fam<- lmer(repro ~ Sex +  (1|Family:Sex), data = L_R_Traits)
+
+summary(Among_Family_r_w_sex_n_fam)
+summary(Among_Family_r_w_sex_fam)
+
+BIC_compare_r_sex_compare_Fam <- BIC(Among_Family_r_w_sex_n_fam)-BIC(Among_Family_r_w_sex_fam)
+
+```
+
+```{r}
+#Plot the interaction of family and sex.
+str(L_R_Traits) 
+L_R_Traits$Family <- as.character(L_R_Traits$Family)
+
+means <- 
+  L_R_Traits%>%
+  #filter out females 
+  filter(Sex=='m')%>%
+  group_by(Family)%>%
+  summarise(mean=mean(repro))
+
+myorder_repro <- means$Family[order(means$mean)]
+
+  ggplot(L_R_Traits, mapping= aes(x =Family,  y = repro, fill = Sex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Reproductive trait",
+                           breaks = seq(0, 5, 25)) +
+                           #limits=c(0, 15)) +
+        ggtitle("Boxplot of reproductive trait per sex") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_repro)
+
+
+```
+
 
 
 
