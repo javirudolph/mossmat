@@ -18,6 +18,9 @@ library(plotly)
 library(corrplot)
 library(ggpubr)
 library(ggmosaic)
+library(lme4)
+library(lsmeans)
+library(insight)
 ```
 
 
@@ -51,7 +54,7 @@ trait <- data_traits %>%
          Sex = str_to_lower(as.character(Sex))) %>% # Sex on lower case only
   mutate_at(vars(starts_with("Week_3_area")), as.numeric) %>% # Make them all numeric 
   group_by(Family) %>% 
-  arrange(Sample, .by_group = TRUE) %>% # Order by family number
+  arrange(Sex, .by_group = TRUE) %>% # Order by family number
   ungroup
 
 trait$Week_3_Circularity <- as.numeric(trait$Week_3_Circularity)
@@ -59,8 +62,6 @@ trait$Week_3_Circularity <- as.numeric(trait$Week_3_Circularity)
 
 
 ```
-
-
 
 ## Checking for outliers and removing them
 ```{r}
@@ -176,7 +177,7 @@ scaled_traits <- scaled_traits[,1:9]
 
 
 ```{r}
-#saveRDS(scaled_traits, "cleandata/Final_growth_dev_traits.RDS")
+saveRDS(scaled_traits, "cleandata/Final_growth_dev_traits.RDS")
 ```
 
 ##Running ordination on growth and development traits
@@ -227,120 +228,573 @@ First three PC account for 88% of the total variation. I would absolutely keep t
 
 #Univariate
 
+Somehow still need to parse the variance for the random effect of family into two groups for each sex and compare that to the model where family is left together. Would nest that give me the same effect?
 ```{r}
+#Filtering traits into male and female lists
+str(trait)
+trait$Family <- as.factor(trait$Family)
+trait$Sex <- as.factor(trait$Sex)
 
-#Among family variances for week 3 perimeter
-Among_Family_P <- lme(Week_3_perimeter ~ Sex, random =~ 1|Family + 1|Plate, data = trait)
-anova(Among_Family_P)
-summary(Among_Family_P)
+trait %>% 
+  filter(Sex == "m") -> male_trait
 
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = Week_3_perimeter ~ Sex + (1|Family) + (1|Plate),data = trait, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
-
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula = Week_3_perimeter ~  (1|Family) + (1|Plate) ,data = trait, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
-
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
-```
-```{r}
-
-#Among family variances for week 3 area
-Among_Family_A <- lme(Week_3_area ~ Sex, random =~ 1|Family+ 1|Plate, data = trait)
-anova(Among_Family_A)
-summary(Among_Family_A)
-
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = Week_3_area ~ Sex + (1|Family)+ (1|Plate), data = trait, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
-
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula = Week_3_area ~  (1|Family)+ (1|Plate) ,data = trait, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
-
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+trait %>% 
+  filter(Sex == "f") -> female_trait
 ```
 
 
+#Week 3 perimeter
 ```{r}
-#Among family variances for Days until Gam.
-Among_Family_D <- lme(Days_until_gametophores~ Sex, random =~ 1|Family + 1|Plate, data = trait)
-anova(Among_Family_D)
-summary(Among_Family_D)
+#Are these traits sexually dimorphic for their means?
+# -6.196064 No affect of sex
+Among_Family_P_w_sex <- lmer(Week_3_perimeter~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
 
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula =Days_until_gametophores ~ Sex + (1|Family) + (1|Plate),data = trait, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
+Among_Family_P_n_sex <- lmer(Week_3_perimeter~ (1|Family)  + (1|Family:Sex)+ (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
 
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula =Days_until_gametophores ~  (1|Family)+ (1|Plate) ,data = trait, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
+VarCorr(Among_Family_P_n_sex)
 
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+summary(Among_Family_P_w_sex)
+summary(Among_Family_P_n_sex)
+
+#Comparing models where sex could have an affect. -4.694448
+BIC_compare_P_sex_compare <- BIC(Among_Family_P_n_sex)-BIC(Among_Family_P_w_sex)
+
+#Least Square Meanas
+output_1_perim <- lsmeans(Among_Family_P_w_sex, ~Sex)
+
+```
+
+```{r}
+#Are these traits dimorphic for their variances? 121.3226
+
+trait_1 <- transform(trait,
+          obs=factor(1:nrow(trait)),
+          Sexdummy=as.numeric(Sex=="m"))
+Among_family_P_sex_constrained <- lmer(Week_3_perimeter~Sex+
+     (1|Family) + (1|Family:Sex) + (Sexdummy-1|obs), 
+     trait_1, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
+
+summary(Among_family_P_sex_constrained)
+
+#Compare effect of sex when variance is constrained to be equal
+
+BIC_compare_P_sex_compare_constrained <- BIC(Among_family_P_sex_constrained)-BIC(Among_Family_P_w_sex)
+
+#Least square means and variances
+output_2_perim <- lsmeans(Among_family_P_sex_constrained, ~Sex)
+```
+
+```{r}
+#Does the among family variance differ? -6.348371
+Among_Family_P_Fam <- lmer(Week_3_perimeter~ Sex + (1|Family)+ (1|Family:Sex)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_P_Fam)
+
+Among_Family_P_n_Fam <- lmer(Week_3_perimeter~ Sex + (1|Family:Sex)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+BIC_compare_P_Fam_compare <- BIC(Among_Family_P_n_Fam)-BIC(Among_Family_P_Fam)
+
+VarCorr(Among_Family_P_Fam)
+```
+
+
+```{r}
+#Does the among family variance for each sex differ? 30.8637
+Among_Family_P_w_sex_int <- lmer(Week_3_perimeter~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_P_w_sex_n_int <- lmer(Week_3_perimeter~ Sex +(1|Family) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_P_w_sex_int)
+summary(Among_Family_P_w_sex_n_int)
+
+
+BIC_compare_P_sex_compare_int <- BIC(Among_Family_P_w_sex_n_int)-BIC(Among_Family_P_w_sex_int) #compare
+
+
+```
+
+```{r}
+#Plot the interaction of family and sex.
+ means <- 
+  trait%>%
+  #filter out females 
+  filter(Sex=='m')%>%
+  group_by(Family)%>%
+  summarise(mean=mean(Week_3_perimeter))
+
+myorder_perm <- means$Family[order(means$mean)]
+
+  ggplot(trait, mapping= aes(x =Family,  y = Week_3_perimeter, fill = Sex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Perimeter (mm)",
+                           breaks = seq(0, 5, 15),
+                           limits=c(0, 15)) +
+        scale_x_discrete(name = "Month") +
+        ggtitle("Boxplot of perimeter per sex") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_perm)
+
+
+```
+
+
+#Attempting to fix uneven male and female samples.
+```{r}
+
+
+#Boot strapping for unequal numbers of males and females
+Family_2= c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29
+            ,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45)
+
+#v_family <- array() #empty array for families
+v_males<-array() #empty array for males
+v_females<-array() #empty array for females
+mean_males<-array() #empty array for mean males
+mean_females<-array() #empty array for mean females
+
+data_new<-data.frame(matrix(0, ncol = 9, nrow = 1))  #blank matrix to cbind MA 
+colnames(data_new) <- colnames(female_trait) #give blank martix correct col.names
+
+for (k in 1:10000){
+  
+  data_new_female<-data.frame(matrix(0, ncol = 9, nrow = 1))  #blank matrix to cbind MA 
+  colnames(data_new_female) <- colnames(trait) #give blank martix correct col.names
+  data_new_female$bootrep <- NA #make a blank column for bootrep
+  
+  for (i in 1:45){
+    rand_fam=sample(Family_2,1)
+    temp=subset(female_trait, female_trait$Family==rand_fam)
+    temp$bootrep<-i
+    data_new_female=rbind(data_new_female,temp)
+  }
+  
+  data_new_female<-data_new_female[-1,] #removes seed line of blank data
+  Among_Family_P_w_female <- lmer(Week_3_perimeter~ (1|Family) + (1|Family:Sample) + (1|Plate), data = data_new_female, REML = FALSE, na.action = na.omit)
+  mean_females[k]=as.data.frame(coef(summary(Among_Family_P_w_female)))[1,1]#gives mean for females maybe
+  v_females[k]=as.data.frame(coef(summary(Among_Family_P_w_female)))[1,2]
+  
+  
+  data_new_male<-data.frame(matrix(0, ncol = 9, nrow = 1))  #blank matrix to cbind MA 
+  colnames(data_new_male) <- colnames(male_trait) #give blank martix correct col.names
+  data_new_male$bootrep <- NA #make a blank column for bootrep
+                                                                    
+  for (i in 1:45){
+    rand_fam=sample(Family_2,1)
+    temp=subset(male_trait, male_trait$Family==rand_fam)
+    temp$bootrep<-i
+    data_new_male=rbind(data_new_male,temp)
+  }
+  
+  data_new_male<-data_new_male[-1,] #removes seed line of blank data
+  Among_Family_P_w_male <- lmer(Week_3_perimeter~ (1|Family) + (1|Family:Sample) + (1|Plate), data = data_new_male, REML = FALSE, na.action = na.omit)
+  mean_males[k]=as.data.frame(coef(summary(Among_Family_P_w_male)))[1,1]#gives mean for males maybe
+  v_males[k]=as.data.frame(coef(summary(Among_Family_P_w_male)))[1,2]
+  print(k)
+}
+
+output<-data.frame(v_males,v_females,mean_males,mean_females)
+write.csv(output, "Bootstrap_growth_perimeter.csv", row.names = FALSE)
+
+```
+
+```{r}
+#Comparing among family variance for week 3 area for each sex
+Among_Family_A_Fem_sex <- lmer(Week_3_area~  (1|Family) +  (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_A_Male_sex <- lmer(Week_3_area~  (1|Family) +  (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+
+```
+
+
+#Week 3 area
+```{r}
+#Are these traits sexually dimorphic for their means? -6.90284
+
+Among_Family_A_w_sex <- lmer(Week_3_area~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_A_n_sex <- lmer(Week_3_area~ (1|Family)  + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_A_w_sex)
+summary(Among_Family_A_n_sex)
+
+BIC_compare_A_sex_compare <- BIC(Among_Family_A_n_sex)-BIC(Among_Family_A_w_sex)
+
+output_area <- lsmeans(Among_Family_A_w_sex,~ Sex)
+
+```
+
+```{r}
+#Are these traits sexually dimorphic for variances 131.1856
+#test for differences in variation between sexes in a mixed model (lme4) for week 3 area 
+
+#a   <- lmer (Week_3_area~ Sex + (1|Family) +  (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+#Running constrained variances in lme instead of lmer
+#a <- lme(Week_3_area~ Sex,
+     #random=~1|Family +  1|Plate,data=trait, method="REML",
+     #weights=varIdent(~Sex))
+
+
+trait_2 <- transform(trait,
+          obs=factor(1:nrow(trait)),
+          Sexdummy=as.numeric(Sex=="m"))
+Among_family_A_w_sex_constrained <- lmer(Week_3_area~Sex+
+     (1|Family) + (1|Family:Sex) + (Sexdummy-1|obs), 
+     trait_2, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
+
+summary(Among_family_A_w_sex_constrained)
+
+#Compare effect of sex when variance is constrained to be equal
+#AIC for constrained sex is larger which means that unconstrained is a better fit and therefore variances may be unequal
+
+BIC_compare_A_sex_compare_constrained <- BIC(Among_family_A_w_sex_constrained)-BIC(Among_Family_A_w_sex)
+
+```
+
+```{r}
+#Does the among family variance differ? -6.840116
+Among_Family_A_Fam <- lmer(Week_3_area~ Sex + (1|Family:Sex) +(1|Family)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_A_n_Fam <- lmer(Week_3_area~ Sex + (1|Family:Sex)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+BIC_compare_A_Fam_compare <- BIC(Among_Family_A_n_Fam)-BIC(Among_Family_A_Fam)
+
+```
+
+
+```{r}
+#Does the among family variance differ between sexes or can sexual dimorphism evolve? 55.37766
+
+
+Among_Family_A_w_sex_int <- lmer(Week_3_area~ Sex + (1|Family:Sex) +(1|Family)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_A_w_sex_n_int <- lmer(Week_3_area~ Sex +(1|Family) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_A_w_sex_int)
+summary(Among_Family_A_w_sex_n_int)
+
+BIC_compare_A_sex_compare_int <- BIC(Among_Family_A_w_sex_n_int)-BIC(Among_Family_A_w_sex)
+
+VarCorr(Among_Family_A_w_sex_int)
+
+```
+
+```{r}
+#Plot the interaction of family and sex.
+ means <- 
+  trait%>%
+  #filter out females 
+  filter(Sex=='m')%>%
+  group_by(Family)%>%
+  summarise(mean=mean(Week_3_area))
+
+myorder_area <- means$Family[order(means$mean)]
+
+  ggplot(trait, mapping= aes(x =Family,  y = Week_3_area, fill = Sex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Area (mm2)",
+                           breaks = seq(0, .5, 1),
+                           limits=c(0, 1.5)) +
+        scale_x_discrete(name = "Month") +
+        ggtitle("Boxplot of area per sex") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_area)
+
+
+```
+
+#Days until Gam 
+```{r}
+#Is there an affact of Sex?  -6.327797
+
+Among_Family_D_w_sex <- lmer(Days_until_gametophores~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_D_n_sex <- lmer(Days_until_gametophores~ (1|Family) + (1|Family:Sex) +(1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_D_w_sex)
+summary(Among_Family_D_n_sex)
+
+BIC_compare_D_sex <- BIC(Among_Family_D_n_sex)-BIC(Among_Family_D_w_sex)
+
+output_days <- lsmeans(Among_Family_D_w_sex, ~Sex)
+```
+
+```{r}
+#Are these traits sexually dimorphic for variances 30.73701
+trait_3 <- transform(trait,
+          obs=factor(1:nrow(trait)),
+          Sexdummy=as.numeric(Sex=="m"))
+Among_family_D_w_sex_constrained <- lmer(Days_until_gametophores~Sex+
+     (1|Family) + (1|Family:Sex) + (1|Plate)+(Sexdummy-1|obs), 
+     trait_3, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
+
+summary(Among_family_D_w_sex_constrained)
+
+#Compare effect of sex when variance is constrained to be equal
+#AIC for constrained sex is larger which means that unconstrained is a better fit and therefore variances may be unequal
+
+BIC_compare_D_sex_compare_constrained <- BIC(Among_family_D_w_sex_constrained)-BIC(Among_Family_D_w_sex)
+```
+
+```{r}
+#Does the among family variance differ? -6.191903
+Among_Family_D_Fam <- lmer(Days_until_gametophores~ Sex + (1|Family)  +(1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_D_n_Fam <- lmer(Days_until_gametophores~ Sex + (1|Family:Sex)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+BIC_compare_D_Fam_compare <- BIC(Among_Family_D_n_Fam)-BIC(Among_Family_D_Fam)
+
+VarCorr(Among_Family_D_Fam)
+
+```
+
+```{r}
+#Does the among family variance for each sex differ? 16.46835
+
+Among_Family_D_w_sex_int <- lmer(Days_until_gametophores~ Sex  +(1|Family) + (1|Family:Sample) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_D_w_sex_n_int <- lmer(Days_until_gametophores~ Sex + (1|Family)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_D_w_sex_int)
+summary(Among_Family_D_w_sex_n_int)
+
+BIC_compare_D_int <- BIC(Among_Family_D_w_sex_n_int)-BIC(Among_Family_D_w_sex_int)
+
 ```
 
 ```{r}
 
-#Among family variances for week 3 circularity
-Among_Family_C <- lme(Week_3_Circularity~ Sex, random =~ 1|Family+ 1|Plate, data = trait)
-anova(Among_Family_C)
-summary(Among_Family_C)
+#Plot the interaction of family and sex.
+ means <- 
+  trait%>%
+  #filter out females 
+  filter(Sex=='m')%>%
+  group_by(Family)%>%
+  summarise(mean=mean(Days_until_gametophores))
 
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = Week_3_Circularity ~ Sex + (1|Family)+ (1|Plate),data = trait, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
+myorder_days <- means$Family[order(means$mean)]
 
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula =Week_3_Circularity ~  (1|Family)+ (1|Plate) ,data = trait, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
+  ggplot(trait, mapping= aes(x =Family,  y = Days_until_gametophores, fill = Sex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Area (mm2)",
+                           breaks = seq(0, 50,100),
+                           limits=c(0, 150)) +
+        ggtitle("Boxplot of Days until gametophores") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_days)
 
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+
+```
+
+
+#Week 3 Circularity
+```{r}
+#Is circularity sexually dimorphic?  -3.058375
+Among_Family_C_w_sex <- lmer(Week_3_Circularity~ Sex  +(1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_C_n_sex <- lmer(Week_3_Circularity~ (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_C_w_sex)
+summary(Among_Family_C_n_sex)
+
+BIC_compare_C_Sex_compare <- BIC(Among_Family_C_n_sex)-BIC(Among_Family_C_w_sex)
+
+output_circ <- lsmeans(Among_Family_C_w_sex, ~Sex)
 ```
 
 ```{r}
-#Among family variances for total gametophores
-Among_Family_T <- lme(Total_Gametophores~ Sex, random =~ 1|Family+ 1|Plate, data = trait)
-anova(Among_Family_T)
-summary(Among_Family_T)
+#Are these traits sexually dimorphic for variances? 21.21545
+trait_4 <- transform(trait,
+          obs=factor(1:nrow(trait)),
+          Sexdummy=as.numeric(Sex=="m"))
+Among_family_C_w_sex_constrained <- lmer(Week_3_Circularity~Sex+
+     (1|Family) + (1|Family:Sex) +(1|Plate)+ (Sexdummy-1|obs), 
+     trait_4, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
 
-#Compute a model where the effect of sex is estimated
-unrestricted_fit= lmer(
-  formula = Total_Gametophores ~ Sex + (1|Family)+ (1|Plate),data = trait, REML = F)
-BIC(unrestricted_fit)
-AIC(unrestricted_fit)
+summary(Among_family_C_w_sex_constrained)
 
-#Compute a model where the effect of sex is not estimated
-restricted_fit= lmer(
-  formula =Total_Gametophores ~  (1|Family)+ (1|Plate) ,data = trait, REML = F)
-BIC(restricted_fit)
-AIC(restricted_fit)
+#Compare effect of sex when variance is constrained to be equal
+#AIC for constrained sex is larger which means that unconstrained is a better fit and therefore variances may be unequal
 
-#Compute the AIC-corrected log-base-2 likelihood ratio
-#What is this?
-(AIC(restricted_fit)-AIC(unrestricted_fit))*log2(exp(1))
+BIC_compare_C_sex_compare_constrained <- BIC(Among_family_C_w_sex_constrained)-BIC(Among_Family_C_w_sex)
 ```
+
+
+```{r}
+#Does the among family variance for each sex differ? -2.864805
+
+Among_Family_C_w_sex_fam <- lmer(Week_3_Circularity~ Sex  +(1|Family) +  (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_C_w_sex_n_fam <- lmer(Week_3_Circularity~ Sex   + (1|Family:Sex)+ (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_C_w_sex_fam)
+summary(Among_Family_C_w_sex_n_int)
+
+BIC_compare_D_fam <- BIC(Among_Family_C_w_sex_n_fam)-BIC(Among_Family_C_w_sex_fam)
+
+
+```
+
+```{r} 
+
+#Does the among family variance for each sex differ? 0.8656942
+Among_Family_C_w_sex_int <- lmer(Week_3_Circularity~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_C_w_sex_n_int <- lmer(Week_3_Circularity~ Sex +(1|Family)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_C_w_sex_int)
+summary(Among_Family_C_w_sex_n_int)
+
+BIC_compare_C_Sex_int_compare <- BIC(Among_Family_C_w_sex_n_int)-BIC(Among_Family_C_w_sex_int)
+
+
+
+```
+
+
+
+```{r}
+
+#Plot the interaction of family and sex.
+ means <- 
+  trait%>%
+  #filter out females 
+  filter(Sex=='m')%>%
+  group_by(Family)%>%
+  summarise(mean=mean(Week_3_Circularity))
+
+myorder_circ <- means$Family[order(means$mean)]
+
+  ggplot(trait, mapping= aes(x =Family,  y = Week_3_Circularity, fill = Sex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Area (mm2)",
+                           breaks = seq(0, 1,2),
+                           limits=c(0, 2)) +
+        ggtitle("Boxplot of circularity") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_circ)
+
+```
+
+
+
+
+#Total days
+```{r}
+# sexually dimorphic?  -10.27364
+Among_Family_T_w_sex <- lmer(Total_Gametophores~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_T_n_sex <- lmer(Total_Gametophores~ (1|Family)  +  (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_T_w_sex)
+summary(Among_Family_T_n_sex)
+
+output_total <- lsmeans(Among_Family_T_w_sex, ~Sex)
+BIC_compare_T_Sex_compare <- BIC(Among_Family_T_n_sex)-BIC(Among_Family_T_w_sex)
+```
+
+```{r}
+#Are these traits sexually dimorphic for variances? 9.434474
+trait_5 <- transform(trait,
+          obs=factor(1:nrow(trait)),
+          Sexdummy=as.numeric(Sex=="m"))
+Among_family_T_w_sex_constrained <- lmer(Total_Gametophores~Sex+
+     (1|Family) + (1|Family:Sex) + (1|Plate)+(Sexdummy-1|obs), 
+     trait_5, REML=TRUE,
+     control=lmerControl(check.nobs.vs.nRE  = "ignore",
+                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
+
+summary(Among_family_T_w_sex_constrained)
+
+#Compare effect of sex when variance is constrained to be equal
+#AIC for constrained sex is larger which means that unconstrained is a better fit and therefore variances may be unequal
+
+BIC_compare_T_sex_compare_constrained <- BIC(Among_family_T_w_sex_constrained)-BIC(Among_Family_T_w_sex)
+```
+
+```{r}
+
+#Does the among family variance for each sex differ? -4.138287
+Among_Family_T_w_sex_int <- lmer(Total_Gametophores~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_T_w_sex_n_int <- lmer(Total_Gametophores~ Sex + (1|Family) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_T_w_sex_int)
+summary(Among_Family_T_w_sex_n_int)
+
+BIC_compare_T_Sex_int_compare <- BIC(Among_Family_T_w_sex_n_int)-BIC(Among_Family_T_w_sex_int)
+```
+
+```{r}
+
+#Does the family variance for differ? -5.343458
+
+Among_Family_T_w_sex_Fam <- lmer(Total_Gametophores~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+Among_Family_T_w_sex_n_Fam <- lmer(Total_Gametophores~ Sex + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
+
+summary(Among_Family_T_w_sex_Fam)
+summary(Among_Family_T_w_sex_n_Fam)
+
+BIC_compare_T_Sex_Fam <- BIC(Among_Family_T_w_sex_n_Fam)-BIC(Among_Family_T_w_sex_Fam)
+```
+
+
+```{r}
+
+#Plot the interaction of family and sex.
+ means <- 
+  trait%>%
+  #filter out females 
+  filter(Sex=='m')%>%
+  group_by(Family)%>%
+  summarise(mean=mean(Total_Gametophores))
+
+myorder_Total <- means$Family[order(means$mean)]
+
+  ggplot(trait, mapping= aes(x =Family,  y = Total_Gametophores, fill = Sex)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Area (mm2)",
+                           breaks = seq(0, 25,30),
+                           limits=c(0, 30)) +
+        ggtitle("Boxplot of total gametophores") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette = "Accent")+
+        scale_x_discrete(limits=myorder_Total)
+
+
+```
+
