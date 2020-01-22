@@ -111,6 +111,12 @@ trait[,8] %>%
   ggplot(aes(x = trait, y = value)) + 
   geom_boxplot()
 
+outliers_Gam <- which(trait$Days_until_gametophores>25)
+trait[outliers_Gam,]
+
+trait$Days_until_gametophores[outliers_Gam] <- (trait$Days_until_gametophores[outliers_Gam] == 0) 
+
+
 #Remove Total--- I dont think these are outliers either...
 trait[,9] %>% 
   gather(key = "trait", value = "value") %>% 
@@ -297,7 +303,37 @@ Among_Family_P_n_Fam <- lmer(Week_3_perimeter~ Sex + (1|Family:Sex)  + (1|Plate)
 BIC_compare_P_Fam_compare <- BIC(Among_Family_P_n_Fam)-BIC(Among_Family_P_Fam)
 
 VarCorr(Among_Family_P_Fam)
+
+
 ```
+```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_P_Fam <- lmer(Week_3_perimeter~ (1|Family)  + (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+Female_Family_P_n_Fam <- lmer(Week_3_perimeter~ (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_P_Fam)
+summary(Female_Family_P_n_Fam)
+
+BIC_compare_P_female_fam <- BIC(Female_Family_P_n_Fam)-BIC(Female_Family_P_Fam)
+
+
+#Males
+male_Family_P_Fam <- lmer(Week_3_perimeter~ (1|Family)  + (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+male_Family_P_n_Fam <- lmer(Week_3_perimeter~ (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_P_Fam)
+summary(male_Family_P_n_Fam)
+
+BIC_compare_P_male_fam <- BIC(male_Family_P_n_Fam)-BIC(male_Family_P_Fam)
+
+```
+
+
+
 
 
 ```{r}
@@ -404,15 +440,6 @@ write.csv(output, "Bootstrap_growth_perimeter.csv", row.names = FALSE)
 
 ```
 
-```{r}
-#Comparing among family variance for week 3 area for each sex
-Among_Family_A_Fem_sex <- lmer(Week_3_area~  (1|Family) +  (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
-
-Among_Family_A_Male_sex <- lmer(Week_3_area~  (1|Family) +  (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
-
-
-```
-
 
 #Week 3 area
 ```{r}
@@ -471,6 +498,31 @@ BIC_compare_A_Fam_compare <- BIC(Among_Family_A_n_Fam)-BIC(Among_Family_A_Fam)
 
 ```
 
+```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_A_Fam <- lmer(Week_3_area~ (1|Family)  + (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+Female_Family_A_n_Fam <- lmer(Week_3_area~ (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_A_Fam)
+summary(Female_Family_A_n_Fam)
+
+BIC_compare_A_female_fam <- BIC(Female_Family_A_n_Fam)-BIC(Female_Family_A_Fam)
+
+
+#Males
+male_Family_A_Fam <- lmer(Week_3_area~ (1|Family)  + (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+male_Family_A_n_Fam <- lmer(Week_3_area~ (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_A_Fam)
+summary(male_Family_A_n_Fam)
+
+BIC_compare_A_male_fam <- BIC(male_Family_A_n_Fam)-BIC(male_Family_A_Fam)
+
+```
 
 ```{r}
 #Does the among family variance differ between sexes or can sexual dimorphism evolve? 55.37766
@@ -520,7 +572,7 @@ myorder_area <- means$Family[order(means$mean)]
 
 #Days until Gam 
 ```{r}
-#Is there an affact of Sex?  -6.327797
+#Is there an affact of Sex?  -6.617722
 
 Among_Family_D_w_sex <- lmer(Days_until_gametophores~ Sex + (1|Family) + (1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
 
@@ -535,7 +587,7 @@ output_days <- lsmeans(Among_Family_D_w_sex, ~Sex)
 ```
 
 ```{r}
-#Are these traits sexually dimorphic for variances 30.73701
+#Are these traits sexually dimorphic for variances 9.493998
 trait_3 <- transform(trait,
           obs=factor(1:nrow(trait)),
           Sexdummy=as.numeric(Sex=="m"))
@@ -554,7 +606,7 @@ BIC_compare_D_sex_compare_constrained <- BIC(Among_family_D_w_sex_constrained)-B
 ```
 
 ```{r}
-#Does the among family variance differ? -6.191903
+#Does the among family variance differ? -6.467028
 Among_Family_D_Fam <- lmer(Days_until_gametophores~ Sex + (1|Family)  +(1|Family:Sex) + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
 
 Among_Family_D_n_Fam <- lmer(Days_until_gametophores~ Sex + (1|Family:Sex)  + (1|Plate), data = trait, REML = FALSE, na.action = na.omit)
@@ -562,6 +614,32 @@ Among_Family_D_n_Fam <- lmer(Days_until_gametophores~ Sex + (1|Family:Sex)  + (1
 BIC_compare_D_Fam_compare <- BIC(Among_Family_D_n_Fam)-BIC(Among_Family_D_Fam)
 
 VarCorr(Among_Family_D_Fam)
+
+```
+
+```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_D_Fam <- lmer(Days_until_gametophores~ (1|Family)  + (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+Female_Family_D_n_Fam <- lmer(Days_until_gametophores~ (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_D_Fam)
+summary(Female_Family_D_n_Fam)
+
+BIC_compare_D_female_fam <- BIC(Female_Family_D_n_Fam)-BIC(Female_Family_D_Fam)
+
+
+#Males
+male_Family_D_Fam <- lmer(Days_until_gametophores~ (1|Family)  + (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+male_Family_D_n_Fam <- lmer(Days_until_gametophores~ (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_D_Fam)
+summary(male_Family_D_n_Fam)
+
+BIC_compare_D_male_fam <- BIC(male_Family_D_n_Fam)-BIC(male_Family_D_Fam)
 
 ```
 
@@ -659,6 +737,32 @@ BIC_compare_D_fam <- BIC(Among_Family_C_w_sex_n_fam)-BIC(Among_Family_C_w_sex_fa
 
 ```
 
+```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_C_Fam <- lmer(Week_3_Circularity~ (1|Family)  + (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+Female_Family_C_n_Fam <- lmer(Week_3_Circularity~ (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_C_Fam)
+summary(Female_Family_C_n_Fam)
+
+BIC_compare_C_female_fam <- BIC(Female_Family_C_n_Fam)-BIC(Female_Family_C_Fam)
+
+
+#Males
+male_Family_C_Fam <- lmer(Week_3_Circularity~ (1|Family)  + (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+male_Family_C_n_Fam <- lmer(Week_3_Circularity~ (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_C_Fam)
+summary(male_Family_C_n_Fam)
+
+BIC_compare_C_male_fam <- BIC(male_Family_C_n_Fam)-BIC(male_Family_C_Fam)
+
+```
+
 ```{r} 
 
 #Does the among family variance for each sex differ? 0.8656942
@@ -752,6 +856,32 @@ summary(Among_Family_T_w_sex_int)
 summary(Among_Family_T_w_sex_n_int)
 
 BIC_compare_T_Sex_int_compare <- BIC(Among_Family_T_w_sex_n_int)-BIC(Among_Family_T_w_sex_int)
+```
+
+```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_T_Fam <- lmer(Total_Gametophores~ (1|Family)  + (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+Female_Family_T_n_Fam <- lmer(Total_Gametophores~ (1|Plate), data = female_trait, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_T_Fam)
+summary(Female_Family_T_n_Fam)
+
+BIC_compare_T_female_fam <- BIC(Female_Family_T_n_Fam)-BIC(Female_Family_T_Fam)
+
+
+#Males
+male_Family_T_Fam <- lmer(Total_Gametophores~ (1|Family)  + (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+male_Family_T_n_Fam <- lmer(Total_Gametophores~ (1|Plate), data = male_trait, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_T_Fam)
+summary(male_Family_T_n_Fam)
+
+BIC_compare_T_male_fam <- BIC(male_Family_T_n_Fam)-BIC(male_Family_T_Fam)
+
 ```
 
 ```{r}

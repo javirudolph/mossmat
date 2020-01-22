@@ -532,10 +532,25 @@ clean_voc_clones_2 <- clean_voc_clones[-rows2rm2.vec,]
 
 clean_voc_clones_2$famid
 ```
-We definitel lose quite a few families with this.
+#Seperating VOC data sheet into male and female files to do seperate PCAs on males and females
+```{r}
+
+clean_voc_clones %>% 
+  filter(ssex == "m")%>% #Seperating by sex
+  select(-Date.PTR)%>%
+  distinct()-> male_VOC_clones 
+
+clean_voc_clones %>% 
+  filter(ssex == "f") %>% #Seperating by sex
+  select(-Date.PTR)%>%
+  distinct()-> female_VOC_clones 
 
 
-#Log transformation and then ordination
+```
+
+
+
+#Log transformation and then ordination for all VOCs
 ```{r, fig.width=2.75,fig.height=4.5}
 #Log transform data but add 1e-12 to zeros because you cannot log transform zeros
 log_vocs <- clean_voc_clones_2 %>% 
@@ -556,6 +571,62 @@ legend("topright",
        col = c("green", "blue"),
        lty = 1,
        legend = ssex.colors)
+
+```
+#Log transformation and scaled and then ordination for sex specific VOCs
+```{r, fig.width=2.75,fig.height=4.5}
+#Log transform data but add 1e-12 to zeros because you cannot log transform zeros
+log_vocs_female <- female_VOC_clones %>% 
+  mutate_at(vars(starts_with("m")), list(~ log10(. + 1e-12)))
+
+#Scale log transformed data
+log_st_vocs_female <- log_vocs_female %>% 
+  mutate_at(vars(starts_with("m")), scale)
+
+#Run PCA on log transformed data
+log_pca_female <- rda(log_vocs_female[,4:78])
+
+
+# Figure for log transformed data
+biplot(log_pca_female, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+#ssex.colors <- levels(factor(log_vocs$ssex))
+#ordihull(log_pca, group = factor(log_vocs$ssex),
+         #col = c("green","blue"))
+#legend("topright", 
+       #col = c("green", "blue"),
+       #lty = 1,
+      # legend = ssex.colors)
+
+```
+
+
+```{r, fig.width=2.75,fig.height=4.5}
+#Log transform data but add 1e-12 to zeros because you cannot log transform zeros
+log_vocs_male <- male_VOC_clones %>% 
+  mutate_at(vars(starts_with("m")), list(~ log10(. + 1e-12)))
+
+#Scale log transformed data
+log_st_vocs_male <- log_vocs_male %>% 
+  mutate_at(vars(starts_with("m")), scale)
+
+#Run PCA on log transformed data
+log_pca_male <- rda(log_st_vocs_male[,4:78])
+
+# Figure for log transformed data
+biplot(log_pca_male, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+#ssex.colors <- levels(factor(log_vocs$ssex))
+#ordihull(log_pca, group = factor(log_vocs$ssex),
+         #col = c("green","blue"))
+#legend("topright", 
+       #col = c("green", "blue"),
+       #lty = 1,
+      # legend = ssex.colors)
 
 ```
 
@@ -597,7 +668,39 @@ summary(log_st_pca)
 
 #Expressed as cummalitve percentages
 round(cumsum(100*log_st_pca$CA$eig/sum(log_st_pca$CA$eig)),2)
+ 
+```
 
+#For seperate sexes
+```{r}
+#Male
+#Take first 15 PCs
+
+#Scree plot shows a lot of the variation is explained in PC1
+screeplot(log_pca_male)
+abline(a=1,b=0)
+
+## How do we know how many to chose?
+summary(log_pca_male)
+
+#Expressed as cummalitve percentages
+round(cumsum(100*log_pca_male$CA$eig/sum(log_pca_male$CA$eig)),2)
+```
+
+```{r} 
+#Female
+#Take first 13 PC
+
+#Scree plot shows a lot of the variation is explained in PC1
+screeplot(log_pca_female)
+abline(a=1,b=0)
+
+## How do we know how many to chose?
+summary(log_pca_female)
+
+#Expressed as cummalitve percentages
+round(cumsum(100*log_pca_female$CA$eig/sum(log_pca_female$CA$eig)),2)
+ 
 ```
 We want to get about 80% of the total variation captured. The first 17 PC capture 80% of the variance... Is this too many?
 
@@ -613,7 +716,21 @@ We want to get about 80% of the total variation captured. The first 17 PC captur
 ##Practice if we want to pull out the first 13 eigenvalues 
 I am not sure how to interpret this because it runs each eigenvalue through but how do we contribute this to a certain trait?
 ```{r}
+#All
 data.lm <- lm(log_st_pca$CA$u[,1:13]~ log_st_vocs$ssex)
 summary(data.lm)
+
 ```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
 

@@ -20,6 +20,7 @@ library(ggpubr)
 library(Hmisc)
 library(lme4)
 library(nlme)
+library(lsmeans)
 theme_set(theme_bw())
 ```
 ## Leaf and Reproduction Data
@@ -129,37 +130,7 @@ master_less[,4:6] %>%
   geom_boxplot()
 
 ```
-#Checking to makae sure we have enough of each sex in each family
-```{r}
-# Removing instances where there's not two or more measurements per sex, per family:
-#We should be fine with this data 
 
-# First we create a merged family id + sex indicator variable
-famid.and.sex <- paste0(master_less$famid,master_less$ssex)
-master_less$famid.and.sex <- famid.and.sex 
-
-# Then we use this new indicator variable to count number of reps per fam per sex
-nsamp.perfamNsex <- table(master_less$famid.and.sex)
-allfamidsNsex <- names(nsamp.perfamNsex)
-
-# Now we locate families to be removed because they lack replication 
-where.onesamp <- which(nsamp.perfamNsex==1,arr.ind=TRUE)
-fams2rm <- allfamidsNsex[where.onesamp]
-
-# Finally we locate where in the original data set (i.e. which row) these families are
-# and save those row numbers to later remove them
-rows2rm <- list()
-for(i in 1:length(fams2rm)){
-	rows2rm[[i]] <- which(as.character(master_less$famid)==substr(fams2rm[i], start=1,stop=1))
-}
-rows2rm.vec <- unlist(rows2rm)
-
-# Remove the rows of the families and sex without replicates
-#master_less2 <- master_less[-rows2rm.vec,]
-#length(table(master_less$famid))
-
-master_less$famid.and.sex <- NULL
-```
 
 
 ```{r}
@@ -261,6 +232,21 @@ I am not sure how to interpret this because it runs each eigenvalue through but 
 data.lm <- lm(scaled_pca$CA$u[,1:2]~ L_R_Traits$Sex)
 summary(data.lm)
 ```
+```{r}
+master_less %>% 
+  filter(ssex == "m") -> male_master_less
+
+master_less %>% 
+  filter(ssex == "f") -> female_master_less
+
+L_R_Traits %>% 
+  filter(Sex == "m") -> male_L_R_Traits
+
+L_R_Traits  %>% 
+  filter(Sex == "f") -> female_L_R_Traits
+
+
+```
 
 
 #Univariate analyses
@@ -308,26 +294,6 @@ BIC_compare_LL_sex_compare_constrained <- BIC(Among_family_LL_w_sex_constrained)
 
 
 ```{r}
-#Are these traits dimorphic for their variances? 16.45776
-
-trait_6 <- transform(master_less,
-          obs=factor(1:nrow(master_less)),
-          Sexdummy=as.numeric(ssex=="m"))
-Among_family_LL_w_sex_constrained <- lmer(Leaf_Length_Average~ssex+
-     (1|famid) + (1|famid:ssex) + (Sexdummy-1|obs), 
-     trait_6, REML=TRUE,
-     control=lmerControl(check.nobs.vs.nRE  = "ignore",
-                         check.nobs.vs.nlev = "ignore")) #constrained variances in lmer
-
-summary(Among_family_LL_w_sex_constrained)
-
-#Compare effect of sex when variance is constrained to be equal
-
-BIC_compare_LL_sex_compare_constrained <- BIC(Among_family_LL_w_sex_constrained)-BIC(Among_Family_LL_w_sex)
-
-```
-
-```{r}
 #Does the interaction of family and sex have an effect? -0.1316159
 
 Among_Family_LL_n_sex_int<- lmer(Leaf_Length_Average ~ ssex + (1|famid), data = master_less)
@@ -350,6 +316,33 @@ Among_Family_LL_n_Fam <- lmer(Leaf_Length_Average~ ssex + (1|famid:ssex) , data 
 BIC_compare_LL_Fam_compare <- BIC(Among_Family_LL_n_Fam)-BIC(Among_Family_LL_Fam)
 
 ```
+
+```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_LL_Fam <- lmer(Leaf_Length_Average~ (1|famid) , data = female_master_less, REML = FALSE, na.action = na.omit)
+
+#Female_Family_LL_n_Fam <- lmer(Leaf_Length_Average~, data = female_master_less, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_LL_Fam)
+#summary(Female_Family_LL_n_Fam)
+
+#BIC_compare_LL_female_fam <- BIC(Female_Family_LL_n_Fam)-BIC(Female_Family_LL_Fam)
+
+
+#Males
+male_Family_LL_Fam <- lmer(Leaf_Length_Average~ (1|famid) , data = male_master_less, REML = FALSE, na.action = na.omit)
+
+#male_Family_LL_n_Fam <- lmer(Leaf_Length_Average~ (1|famid), data = male_master_less, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_LL_Fam)
+#summary(male_Family_LL_n_Fam)
+
+#BIC_compare_LL_male_fam <- BIC(male_Family_LL_n_Fam)-BIC(male_Family_LL_Fam)
+
+```
+
 
 ```{r}
 #Plot the interaction of family and sex.
@@ -443,6 +436,32 @@ BIC_compare_LA_Fam_compare <- BIC(Among_Family_LA_n_Fam)-BIC(Among_Family_LA_Fam
 ```
 
 ```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_LA_Fam <- lmer(Leaf_Average_Area~ (1|famid) , data = female_master_less, REML = FALSE, na.action = na.omit)
+
+#Female_Family_LA_n_Fam <- lmer(Leaf_Average_Area~ (1|famid:ssex), data = female_master_less, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_LA_Fam)
+#summary(Female_Family_LA_n_Fam)
+
+#BIC_compare_LA_female_fam <- BIC(Female_Family_LA_n_Fam)-BIC(Female_Family_LA_Fam)
+
+
+#Males
+male_Family_LA_Fam <- lmer(Leaf_Average_Area~ (1|famid) , data = male_master_less, REML = FALSE, na.action = na.omit)
+
+#male_Family_LA_n_Fam <- lmer(Leaf_Average_Area~ (1|famid), data = male_master_less, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_LA_Fam)
+#summary(male_Family_LA_n_Fam)
+
+#BIC_compare_LA_male_fam <- (BIC(male_Family_LA_n_Fam)-BIC(male_Family_LA_Fam))
+
+```
+
+```{r}
 #Plot the interaction of family and sex.
 
 means <- 
@@ -515,6 +534,33 @@ summary(Among_Family_LP_w_sex_int)
 summary(Among_Family_LP_w_sex_n_int)
 
 BIC_compare_LP_sex_compare_int <- BIC(Among_Family_LP_w_sex_n_int)-BIC(Among_Family_LP_w_sex_int)
+```
+
+
+```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_LP_Fam <- lmer(Leaf_perimeter_average~ (1|famid) , data = female_master_less, REML = FALSE, na.action = na.omit)
+
+#Female_Family_LP_n_Fam <- lmer(Leaf_perimeter_average~ (1|famid:ssex), data = female_master_less, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_LP_Fam)
+#summary(Female_Family_LP_n_Fam)
+
+#BIC_compare_LP_female_fam <- BIC(Female_Family_LP_n_Fam)-BIC(Female_Family_LP_Fam)
+
+
+#Males
+male_Family_LP_Fam <- lmer(Leaf_perimeter_average~ (1|famid) , data = male_master_less, REML = FALSE, na.action = na.omit)
+
+#male_Family_LP_n_Fam <- lmer(Leaf_perimeter_average~ (1|famid), data = male_master_less, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_LP_Fam)
+#summary(male_Family_LP_n_Fam)
+
+#BIC_compare_LP_male_fam <- (BIC$male_Family_LP_n_Fam-BIC$male_Family_LP_Fam)
+
 ```
 
 ```{r}
@@ -620,6 +666,34 @@ summary(Among_Family_r_w_sex_fam)
 BIC_compare_r_sex_compare_Fam <- BIC(Among_Family_r_w_sex_n_fam)-BIC(Among_Family_r_w_sex_fam)
 
 ```
+
+```{r}
+#Comparing male and female families
+
+#Females
+Female_Family_R_Fam <- lmer(repro~ (1|Family:Sex) +(1|Family) , data = female_L_R_Traits, REML = FALSE, na.action = na.omit)
+
+Female_Family_R_n_Fam <- lmer(repro~ (1|Family:Sex), data = female_L_R_Traits, REML = FALSE, na.action = na.omit)
+
+summary(Female_Family_R_Fam)
+summary(Female_Family_R_n_Fam)
+
+BIC_compare_R_female_fam <- BIC(Female_Family_R_n_Fam)-BIC(Female_Family_R_Fam)
+
+
+#Males
+male_Family_R_Fam <- lmer(repro~ (1|Family:Sex) +(1|Family), data = male_L_R_Traits, REML = FALSE, na.action = na.omit)
+
+
+male_Family_R_n_Fam <- lmer(repro~ (1|Family:Sex), data = male_L_R_Traits, REML = FALSE, na.action = na.omit)
+
+summary(male_Family_R_Fam)
+summary(male_Family_R_n_Fam)
+
+BIC_compare_R_male_fam <- BIC(male_Family_R_n_Fam)-BIC(male_Family_R_Fam)
+
+```
+
 
 ```{r}
 #Plot the interaction of family and sex.
