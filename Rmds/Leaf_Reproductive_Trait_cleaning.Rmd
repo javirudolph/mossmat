@@ -726,9 +726,57 @@ myorder_repro <- means$Family[order(means$mean)]
 
 ```
 
+#Sex chromosome variation
+```{r}
+male_master_less$famid <- as.integer(male_master_less$famid)
+female_master_less$famid <- as.integer(female_master_less$famid)
 
 
+#Adding a unique ID to each row. 
+male_master_less_2 <- rowid_to_column(male_master_less, "ID")
+female_master_less_2 <- rowid_to_column(female_master_less, "ID")
 
+
+male_L_R_Traits_2 <- rowid_to_column(male_L_R_Traits, "ID")
+female_L_R_Traits_2 <- rowid_to_column(female_L_R_Traits, "ID")
+
+```
+
+
+```{r}
+fem_chromo_Llength <- lm(female_master_less_2$Leaf_Length_Average~ famid + famid:ID + ID, data = female_master_less_2)
+summary(fem_chromo_Llength)
+plot(fem_chromo_Llength)
+
+male_chromo_Llength <- lm(male_master_less_2$Leaf_Length_Average~ famid + famid:ID + ID, data = male_master_less_2)
+summary(male_chromo_Llength)
+plot(male_chromo_Larea)
+
+fem_chromo_Larea <- lm(female_master_less_2$Leaf_Average_Area~ famid + famid:ID + ID, data = female_master_less_2)
+summary(fem_chromo_Larea)
+plot(fem_chromo_Larea)
+
+male_chromo_Larea <- lm(male_master_less_2$Leaf_Average_Area~ famid + famid:ID + ID, data = male_master_less_2)
+summary(male_chromo_Larea)
+plot(male_chromo_Larea)
+
+fem_chromo_Lperm <- lm(female_master_less_2$Leaf_perimeter_average~ famid + famid:ID + ID, data = female_master_less_2)
+summary(fem_chromo_Lperm)
+plot(fem_chromo_Lperm)
+
+male_chromo_Lperm <- lm(male_master_less_2$Leaf_perimeter_average~ famid + famid:ID + ID, data = male_master_less_2)
+summary(male_chromo_Lperm)
+plot(male_chromo_Lperm)
+
+female_chromo_repo <- lm(female_L_R_Traits_2$repro~ Family + Family:ID + ID, data = female_L_R_Traits_2)
+summary(female_chromo_repo)
+plot(female_chromo_repo) 
+
+male_chromo_repo <- lm(male_L_R_Traits_2$repro~ Family + Family:ID + ID, data = male_L_R_Traits_2)
+summary(male_chromo_repo)
+plot(male_chromo_repo)
+
+```
 
 
 

@@ -722,10 +722,88 @@ summary(data.lm)
 
 ```
 
-```{r}
 
+#Testing for variation on sex chromosomes
+```{r}
+#Adding a unique ID to each row. 
+log_VOCs_females_2 <- rowid_to_column(log_vocs_female, "ID")
+log_VOCs_males_2 <- rowid_to_column(log_vocs_male, "ID")
+
+str(log_VOCs_females_2)
 ```
 
+```{r}
+#Female sex chromosome variation
+
+fem_chromo_m86 <- lm(log_VOCs_females_2$m86.03~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m86)
+plot(fem_chromo_m86)
+
+male_chromo_m86 <- lm(log_VOCs_males_2$m86.03~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m86)
+plot(male_chromo_m86)
+
+fem_chromo_m49.99 <- lm(log_VOCs_females_2$m49.99~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m49.99)
+
+male_chromo_m49.99 <- lm(log_VOCs_males_2$m49.99~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m49.99)
+
+fem_chromo_m130.0 <- lm(log_VOCs_females_2$m130.0~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m130.0)
+
+male_chromo_m130.0 <- lm(log_VOCs_males_2$m130.0~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m130.0)
+
+fem_chromo_m47.98 <- lm(log_VOCs_females_2$m47.98~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m47.98)
+
+male_chromo_m47.98 <- lm(log_VOCs_males_2$m47.98~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m47.98)
+
+fem_chromo_m107.0 <- lm(log_VOCs_females_2$m107.0~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m107.0)
+
+male_chromo_m107.0 <- lm(log_VOCs_males_2$m107.0~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m107.0)
+
+fem_chromo_m83.05 <- lm(log_VOCs_females_2$m83.05~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m83.05)
+
+male_chromo_m83.05 <- lm(log_VOCs_males_2$m83.05~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m83.05)
+
+fem_chromo_m49.02 <- lm(log_VOCs_females_2$m49.02~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m49.02)
+
+male_chromo_m49.02 <- lm(log_VOCs_males_2$m49.02~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m49.02)
+
+fem_chromo_m49.05 <- lm(log_VOCs_females_2$m49.05~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m49.05)
+
+male_chromo_m49.05 <- lm(log_VOCs_males_2$m49.05~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m49.05)
+
+fem_chromo_m31.99 <- lm(log_VOCs_females_2$m31.99~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m31.99)
+
+male_chromo_m31.99 <- lm(log_VOCs_males_2$m31.99~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m31.99)
+
+fem_chromo_m81.06 <- lm(log_VOCs_females_2$m81.06~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m81.06)
+
+male_chromo_m81.06 <- lm(log_VOCs_males_2$m81.06~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m81.06)
+
+fem_chromo_m43.01 <- lm(log_VOCs_females_2$m43.01~ famid + famid:ID + ID, data = log_VOCs_females_2)
+summary(fem_chromo_m43.01)
+
+male_chromo_m43.01 <- lm(log_VOCs_males_2$m43.01~ famid + famid:ID + ID, data = log_VOCs_males_2)
+summary(male_chromo_m43.01)
+
+```
 
 
 
