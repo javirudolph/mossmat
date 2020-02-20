@@ -143,9 +143,14 @@ trait_raw[outliers_area,]
 outliers_circ <- which(trait_raw$Avg_Circularity_Week.3>50)
 trait_raw[outliers_circ,]
 
+#Converting what we originally input as 100 to 0. 100 was entered for samples that never produced gametophores but it skews the data so we are using 21 which is the max amount of days. 
+
+#100 -> 0
 outliers_Gam <- which(trait_raw$Avg_Days_til_Gam>25)
 trait_raw[outliers_Gam,]
+trait_raw$Avg_Days_til_Gam[outliers_Gam] <- (trait_raw$Avg_Days_til_Gam[outliers_Gam] == 0) 
 
+#Inputting 21 
 outliers_zero <- which(trait_raw$Avg_Days_til_Gam<=0)
 trait_raw[outliers_zero,]
 trait_raw$Avg_Days_til_Gam[outliers_zero] <- (trait_raw$Avg_Days_til_Gam[outliers_zero] + 21) 
@@ -156,7 +161,7 @@ trait_raw$Avg_Days_til_Gam[outliers_zero] <- (trait_raw$Avg_Days_til_Gam[outlier
 ```{r}
 trait_raw$Avg_Area._Week_3[outliers_area] <- trait_raw$Avg_Area._Week_3[outliers_area] / 1000
 trait_raw$Avg_Circularity_Week.3[outliers_circ] <- trait_raw$Avg_Circularity_Week.3[outliers_circ] / 1000
-#trait_raw$Avg_Days_til_Gam[outliers_Gam] <- (trait_raw$Avg_Days_til_Gam[outliers_Gam] == 0) 
+
 
 # check again 
 trait_raw[,10:16] %>% 
