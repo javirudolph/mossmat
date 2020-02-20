@@ -424,16 +424,33 @@ This will create the master data frame that includes the lifehistory traits and 
 clean_master <- full_join(traits, voc_data) %>% 
   mutate_at(c(5:32), as.numeric)
 
-#Setting NA to zero for the time being
-clean_master[is.na(clean_master)]<-0
-
 #Print master file (nothing is transformed because of zeros introduced by joining)
 clean_master$Date.PTR <- NULL
-print(clean_master)
-write_csv(clean_master, "/Users/lesliekollar/Desktop/Moss_matrix/cleandata/clean_master_Jan_13.csv")
+clean_master$area_wk3[clean_master$area_wk3== 0] <- NA
+clean_master$perim_wk3[clean_master$perim_wk3== 0] <- NA
+clean_master$circ_wk3[clean_master$circ_wk3== 0] <- NA
+clean_master$leaf_area[clean_master$leaf_area== 0] <- NA
+clean_master$leaf_length[clean_master$leaf_length== 0] <- NA
+clean_master$leaf_perim[clean_master$leaf_perim== 0] <- NA
+
+clean_master$raw_repro <- NULL
+clean_master$perim_rate <- NULL
+clean_master$area_rate <- NULL
+
+clean_master$famid <- as.factor(clean_master$famid) 
+clean_master$sampid <- as.factor(clean_master$sampid) 
+clean_master$ssex <- as.factor(clean_master$ssex) 
+
+#Imputing missing data with nearest neighbor
+clean_master <- as.data.frame(clean_master)
+clean_master_2 <-knnImputation(clean_master, k=6, scale= T, meth = "weighAvg", distData = NULL)
+
+write_csv(clean_master_2, "/Users/lesliekollar/Desktop/Moss_matrix/cleandata/clean_master_imputed.csv")
+write_csv(clean_master, "/Users/lesliekollar/Desktop/Moss_matrix/cleandata/clean_master.csv")
+
 
 #Log transform only VOC data adding smallest value
-clean_master_log <- clean_master %>% 
+clean_master_log <- clean_master_2 %>% 
   mutate_at(vars(starts_with("m")), list(~ log10(. + 1e-12)))
 
 #Seperating by sex with log data only
@@ -460,10 +477,10 @@ clean_master_log_scaled <- clean_master_log %>%
   mutate_at(vars(starts_with("r")), scale)
 
 
-write.csv(clean_master_log_scaled, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log.csv") 
-saveRDS(clean_master_log_scaled, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log.RDS") #clean master both log scaled and transformed
-saveRDS(clean_master, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix.RDS") #clean master not log transformed and not scaled
-saveRDS(clean_master_log, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_log_voc.RDS") #clean master log transformed but not scaled
+#write.csv(clean_master_log_scaled, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log_imputed.csv") 
+saveRDS(clean_master_log_scaled, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log_imputed.RDS") #clean master both log scaled and transformed
+saveRDS(clean_master, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_imputed.RDS") #clean master not log transformed and not scaled
+saveRDS(clean_master_log, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_log_voc_imputed.RDS") #clean master log transformed but not scaled
 ```
 
 
