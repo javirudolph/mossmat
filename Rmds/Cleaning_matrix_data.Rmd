@@ -460,10 +460,10 @@ clean_master_log_scaled <- clean_master_log %>%
   mutate_at(vars(starts_with("r")), scale)
 
 
-write.csv(clean_master_log_scaled, "cleandata/clean_master_matrix_scaled_log.csv") 
-saveRDS(clean_master_log_scaled, "cleandata/clean_master_matrix_scaled_log.RDS") #clean master both log scaled and transformed
-saveRDS(clean_master, "cleandata/clean_master_matrix.RDS") #clean master not log transformed and not scaled
-saveRDS(clean_master_log, "cleandata/clean_master_matrix_log_voc.RDS") #clean master log transformed but not scaled
+write.csv(clean_master_log_scaled, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log.csv") 
+saveRDS(clean_master_log_scaled, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log.RDS") #clean master both log scaled and transformed
+saveRDS(clean_master, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix.RDS") #clean master not log transformed and not scaled
+saveRDS(clean_master_log, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_log_voc.RDS") #clean master log transformed but not scaled
 ```
 
 
