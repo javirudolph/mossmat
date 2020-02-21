@@ -24,21 +24,18 @@ library(parallel)
 library(dfoptim)
 library(lsmeans)
 library(psych)
+library(DMwR)
 theme_set(theme_bw())
 ```
 
-Reading in the data
+#Reading in the raw data
 ```{r}
-# Read in the raw data
 master <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
 master <- master[1:619,]
 ```
 
 #Goals of this code
-Here, we are cleaning the entire matrix data set in order to use in the matrix componnent of the manuscipt
-
-## Trait data
-We would also like to remove empty rows at the end, manage the zeroes and NAs. There are some errors in measurements and typos that we need to address. 
+Here, we are cleaning the entire matrix data set in order to use in the manuscipt
 
 ```{r}
 # Change variable names and fix sample ID names with spaces, or parentheses
@@ -66,7 +63,8 @@ trait_raw <- trait_raw[-which(trait_raw$sampid == "P_6_6_20"),]
 head(trait_raw)
 ```
 ```{r}
-# Removing DIV/0 from the data set
+# Removing DIV/0 from the data set and setting to NA
+
 trait_raw$Leaf_Average_Area <-  as.numeric(str_replace(trait_raw$Leaf_Average_Area, "#DIV/0", "NA"))
 trait_raw$Leaf_Length_Average <-  as.numeric(str_replace(trait_raw$Leaf_Length_Average, "#DIV/0", "NA"))
 trait_raw$Leaf_perimeter_average <-  as.numeric(str_replace(trait_raw$Leaf_perimeter_average, "#DIV/0", "NA"))
@@ -74,6 +72,8 @@ trait_raw$Leaf_perimeter_average <-  as.numeric(str_replace(trait_raw$Leaf_perim
 ```
 
 # Removing May 23, 29, and 30
+-These days were clear outliers
+-This can be seen when cleaning the individual data sets.
 ```{r}
 trait_raw %>% 
   filter(Date.PTR!= "30-May") %>%
@@ -92,7 +92,10 @@ trait_raw_2 %>%
 ```
 
 #### Leaf traits
-First, we visually check for outliers or values that may not make sense. There are NAs in the dataset which will be problematic but some will be taken care of when we average them
+-For each leaf trait we took ~3 leaf measurements per replicate. These measurements were averaged for each replicate to get one value per replicate.
+-First, we visually check for outliers or values that may not make sense. 
+-There are NAs in the dataset which will be problematic but some will be taken care of when we average them
+- NA's not resolved by averaging clones will be imputed using nearest neighbor. These zeros are not informative and are missing data.
 ```{r}
 # Leaf data averaging 
 trait_raw[,17:19] %>% 
@@ -100,7 +103,9 @@ trait_raw[,17:19] %>%
   ggplot(aes(x = trait, y = value)) + 
   geom_boxplot()
 ```
-There are no clear outliers or errors, so these look ok to average and we create a new data frame with the leaf data. In cases where data for only one of the clones was available, we kept that value. For cases where data was available for both clones we averaged it.  
+- There are no clear outliers or errors, so these look ok to average and we create a new data frame with the leaf data. 
+- In cases where data for only one of the clones was available, we kept that value. 
+-For cases where data was available for both clones we averaged it.  
 
 #Averaging clones for leaf data and removing NAs
 ```{r}
@@ -120,11 +125,11 @@ leaf_data[,2:4] %>%
   geom_boxplot()
 
 ```
-There are still some NAs. I am not sure if I should set those to zero.
+
 
 
 #### Growth and development traits
-We do the same thing with these other traits and it is easy to identify three values that seem incorrect. These are in the area, circularity and perimeter rate.
+-We do the same thing with these other traits and it is easy to identify three values that seem incorrect. These are in the area, circularity and perimeter rate.
 
 ```{r}
 # Growth and Development traits -------------------------------------------
@@ -135,7 +140,10 @@ trait_raw[,10:16] %>%
   ggplot(aes(x = trait, y = value)) + 
   geom_boxplot()
 ```
+
 #Removing outliers for the growth data
+- For days until gametophores were produced, some values are 100 because that sample never produced gametophores. Oringinally we thought to put in a very high value for the number of days however, that was not informative as it skewed the data. Here, we will convert all 100's to "0" and then added 21 days. 21 days is reasonable to use because that was the last day we collected data 
+-All other outliers were noticable as most likely a misprint and fixed.
 ```{r}
 outliers_area <- which(trait_raw$Avg_Area._Week_3>50)
 trait_raw[outliers_area,]
@@ -158,7 +166,10 @@ trait_raw$Avg_Days_til_Gam[outliers_zero] <- (trait_raw$Avg_Days_til_Gam[outlier
 
 ```
 
+#Double checking after removing outliers
+These values had mistakes in the number of decimal places and included a typo making a value be negative. After adjusting these values, we check again for errors. 
 ```{r}
+#Removing samples with mistake in decimal place
 trait_raw$Avg_Area._Week_3[outliers_area] <- trait_raw$Avg_Area._Week_3[outliers_area] / 1000
 trait_raw$Avg_Circularity_Week.3[outliers_circ] <- trait_raw$Avg_Circularity_Week.3[outliers_circ] / 1000
 
@@ -171,15 +182,16 @@ trait_raw[,10:16] %>%
   geom_boxplot()
 ```
 
-These values had mistakes in the number of decimal places and included a typo making a value be negative. After adjusting these values, we check again for errors. The data looks ok now, so we can save the dataframe.
+
 ```{r}
+#Removing outliers that were negative which was a typo
 negs <- which(trait_raw$Avg_Perimeter_Rate < 0)
 trait_raw[negs,]
 
 trait_raw$Avg_Perimeter_Rate[negs]
 trait_raw$Avg_Perimeter_Rate[negs] <- trait_raw$Avg_Perimeter_Rate[negs] /-10
 
-# Check visually
+# Check visually once more...
 trait_raw[,10:16] %>% 
   gather(key = "trait", value = "value") %>% 
   drop_na() %>% 
@@ -187,7 +199,7 @@ trait_raw[,10:16] %>%
   geom_boxplot()
 ```
 
-#Output final data for growth and development data
+#Combining final data for growth and development data
 ```{r}
 trait_raw[,c(2, 10:16)] %>% 
   drop_na() %>% 
@@ -195,8 +207,9 @@ trait_raw[,c(2, 10:16)] %>%
 ```
 
 #### Reproduction variable
-We have different reproduction variables for females and females, so we can scale them and that way keep them under one variable only. This could be wrong, but I honestly don't know what else we could do.
-The first thing we do here is take the average for the clones (meaning we group by the sample ID, take the average) which we call `raw_av` and then scale this so that both female and female values are in the same *scale*, and we call this `reprovar`.
+-We measured male reproductive values by the number of sex buds on 10 different gametophores. We did the same thing for females however, females are more difficult to find and therefore we could see less female sex structures simply because of the difficulty to identify them. Because of this, it is better to use the number of archegonia per sex structure as the reproductive unit. For this measurement you have to identify the sex bud and then count the number of archegonia. Using this should resolve any differenes due to difficulty finding them. However, they are not comparable between the sexes as is..
+-So we can scale them and that way we can keep them in a single column and compare males and females. 
+-The first thing we do here is take the average for the clones (meaning we group by the sample ID, take the average) which we call `raw_av` and then scale this so that both male and female values are in the same *scale*, and we call this `reprovar`.
 
 ```{r}
 # Reproduction variable ---------------------------------------------------
@@ -227,7 +240,8 @@ reprovar %>%
 ```
 
 ### Clean trait data
-We can now join all the smaller datasets and have a master traits data frame. These are not scaled so far and we can evaluate the changes of scaling them vs keeping them as they are.
+-We can now join all the smaller datasets and have a master traits data frame. 
+-These are not scaled so far and we can evaluate the changes of scaling them vs keeping them as they are.
 
 ```{r}
 # Join trait data ---------------------------------------------------------
@@ -242,12 +256,13 @@ trait_raw %>%
               "days21", "days_gam", "leaf_length", "leaf_area",
               "leaf_perim")) -> traits
 
+#Saving raw clean trait data
 saveRDS(traits, "cleandata/clean_traits_final.RDS")
 
 ```
 
 #### Histograms raw trait data
-These are the values for all the traits that were measured and they include only one value per individual. Here, I consider an individual to each of the siblings. This means that we have averaged the measurements associated to clonal replicates, so we get an average of measurements per sibling.
+These are the values for all the traits that were measured and they include only one value per individual (clones averaged). 
 
 ```{r}
 traits %>% 
@@ -259,11 +274,7 @@ traits %>%
 ```
 
 #### Histograms transformed trait data
-It depends on what we need and how the data needs to be formatted.  
-If we log transform the data and then scale it, the following figure shows the histograms for all the variables. Since we have variables in different units, we would probably use the scaled traits for future analyses and models.
-
-I dont think we need to log transform this data
-
+Transforming the data does add anything and therefore we will not transform this data for future analyses.
 ```{r}
 names(traits)
 traits %>% 
@@ -279,7 +290,7 @@ scaled_traits %>%
 ```
 
 
-#Working with VOC data
+#VOC data cleaning
 ```{r}
 # Just keep volatile data and identifiers
 # Also, remove the NAs, there's a lot at the end
@@ -300,7 +311,7 @@ oldnames <- names(voc_raw)
 names(voc_raw)[5:94] <- stringr::str_trunc(oldnames[5:94], width = 6, side = "right", ellipsis = "")
 ```
 
-There was an issue with the notation in one of the compounds, so we check that and fix the notation so that R can recognize the values as numbers.
+-There was an issue with the notation in one of the compounds, so we check that and fix the notation so that R can recognize the values as numbers.
 ```{r}
 #str(voc_raw)
 #' m111.0 is a character
@@ -309,6 +320,7 @@ There was an issue with the notation in one of the compounds, so we check that a
 voc_raw$m111.0 <- as.numeric(str_replace(voc_raw$m111.0, "E", "e"))
 ```
 # Removing May 23, 29, and 30
+These days were clear outliers among all other days of collection
 ```{r}
 voc_raw %>% 
   filter(Date.PTR!= "30-May") %>%
@@ -327,9 +339,9 @@ vocs_2 %>%
 ```
 
 # 10% threshold 
+-Compounds where less than 10% of the samples produced it were removed from the dataset as those were assumed to be noise.
 ```{r}
-str(vocs_3)
-# Create a dataset with only the compounds for which at least 10% of the observations show it.
+
 vocs_3 %>% 
   select(-famid, -sampid, -ssex, -Date.PTR) %>% 
   mutate_if(is.numeric, function(x) ifelse(x > 0, 1, 0)) %>% 
@@ -354,7 +366,7 @@ vocs_3 %>%
 ```
 
 
-# Exploration with clones
+# Exploration with clones in VOC data set
 ```{r}
 long_voc_data <- voc_data %>% 
   gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
@@ -375,8 +387,9 @@ long_voc_data %>%
   scale_y_log10()
 
 ```
-
-We see that there are three big outliers. The values are so small and over the machine's detection thresold, so we will make them equal to zero.
+#Cut off values for voc data
+-We see that there are three big outliers. The values are so small and over the machine's detection thresold, so we will make them equal to zero.
+-We used a cut off for the mass flux of 10 e-10 because anything below this could be due to variation from subtracting out the background taken from the averaging multiple blank samples (control) used during that specific batch of samples
 
 ```{r}
 # Making these outliers be zero
@@ -392,8 +405,6 @@ long_voc_data <- voc_data %>%
 
 ```
 
-voc_data is the cleaned data for the matrix
-
 ```{r eval = FALSE}
 #Plotting log data
 long_voc_data %>% 
@@ -406,8 +417,8 @@ long_voc_data %>%
 ```
 
 
-#Log transformation
-
+#Log transformation VOC data
+We added a very small value of 1e-12 rather than 1 to avoid skewing the data. There are zeros in the VOC data however, those are uniformative because they could not be detected from the PTR or the sample could not produce them. The clones can tell us some information about this however, we can never be sure. The log transformation can not occur on a zero and therefore a value needs to be added. 
 ```{r, fig.width=2.75,fig.height=4.5}
 #Log transform data but add 1e-12 to zeros because you cannot log transform zeros
 log_vocs <- voc_data %>% 
@@ -418,7 +429,10 @@ log_vocs[complete.cases(log_vocs),]
 ```
 
 ### Master dataframe
-This will create the master data frame that includes the lifehistory traits and the VOC clustered data. Also, there is one row per individual, which means the data for clones has either been averaged(for traits) or the max value has been taken (volatiles).
+- This will create the master data frame that includes the lifehistory traits and the VOC data. 
+- Also, there is one row per individual, which means the data for clones has either been averaged(for traits) or the max value has been taken (volatiles).
+- We imputed the missing data using nearest neighbor with euclidean distance. This was onle done for leaf measurements and area, perimeter and ciruclarity. These are the only places were zeros didnt make sense. For example a zero in the reproductive traits means that the sample was not sex expressing and therefore a zero would make sense.
+
 ```{r}
 
 clean_master <- full_join(traits, voc_data) %>% 
@@ -441,12 +455,12 @@ clean_master$famid <- as.factor(clean_master$famid)
 clean_master$sampid <- as.factor(clean_master$sampid) 
 clean_master$ssex <- as.factor(clean_master$ssex) 
 
-#Imputing missing data with nearest neighbor
+#Saving clean matrix before imputing the data
+saveRDS(clean_master, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix.RDS") 
+
+#Imputing missing data with nearest neighbor prior to log transforming VOC data or scaling
 clean_master <- as.data.frame(clean_master)
 clean_master_2 <-knnImputation(clean_master, k=6, scale= T, meth = "weighAvg", distData = NULL)
-
-write_csv(clean_master_2, "/Users/lesliekollar/Desktop/Moss_matrix/cleandata/clean_master_imputed.csv")
-write_csv(clean_master, "/Users/lesliekollar/Desktop/Moss_matrix/cleandata/clean_master.csv")
 
 
 #Log transform only VOC data adding smallest value
@@ -476,10 +490,10 @@ clean_master_log%>%
 clean_master_log_scaled <- clean_master_log %>% 
   mutate_at(vars(starts_with("r")), scale)
 
-
+##All of this data is imputed. Earlier in the code "clean matrix" was printed and saved. 
 #write.csv(clean_master_log_scaled, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log_imputed.csv") 
 saveRDS(clean_master_log_scaled, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log_imputed.RDS") #clean master both log scaled and transformed
-saveRDS(clean_master, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_imputed.RDS") #clean master not log transformed and not scaled
+saveRDS(clean_master_2, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_imputed.RDS") #clean master not log transformed and not scaled
 saveRDS(clean_master_log, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_log_voc_imputed.RDS") #clean master log transformed but not scaled
 ```
 
