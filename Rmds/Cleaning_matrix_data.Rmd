@@ -30,8 +30,9 @@ theme_set(theme_bw())
 
 #Reading in the raw data
 ```{r}
-master <- read.csv("rawdata/LK_master.csv", stringsAsFactors = FALSE)
-master <- master[1:619,]
+master <- read_csv("/Users/lesliekollar/Desktop/Moss_matrix/rawdata/LK_master_2.csv")
+master <- master[1:643,]
+master$PTR <- NULL
 ```
 
 #Goals of this code
@@ -40,9 +41,9 @@ Here, we are cleaning the entire matrix data set in order to use in the manuscip
 ```{r}
 # Change variable names and fix sample ID names with spaces, or parentheses
 
-trait_raw <- master[,1:19] %>% 
-  rename(famid = Fam..,
-         sampid = Sample.Name,
+trait_raw <- master[,1:20] %>% 
+  rename(famid = Fam,
+         sampid = `Sample Name`,
          ssex = Sample_Sex) %>% 
   drop_na(famid) %>% 
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
@@ -61,6 +62,7 @@ trait_raw[which(trait_raw$sampid == "P_18_1_6_B"),]$ssex <- "m"
 trait_raw <- trait_raw[-which(trait_raw$sampid == "P_6_6_20"),]
 
 head(trait_raw)
+
 ```
 ```{r}
 # Removing DIV/0 from the data set and setting to NA
@@ -68,25 +70,25 @@ head(trait_raw)
 trait_raw$Leaf_Average_Area <-  as.numeric(str_replace(trait_raw$Leaf_Average_Area, "#DIV/0", "NA"))
 trait_raw$Leaf_Length_Average <-  as.numeric(str_replace(trait_raw$Leaf_Length_Average, "#DIV/0", "NA"))
 trait_raw$Leaf_perimeter_average <-  as.numeric(str_replace(trait_raw$Leaf_perimeter_average, "#DIV/0", "NA"))
-
 ```
+
 
 # Removing May 23, 29, and 30
 -These days were clear outliers
 -This can be seen when cleaning the individual data sets.
 ```{r}
 trait_raw %>% 
-  filter(Date.PTR!= "30-May") %>%
+  filter(`Date PTR`!= "30-May") %>%
   mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
   arrange(sampid, .by_group = TRUE)-> trait_raw_3
 
 trait_raw_3 %>% 
-  filter(Date.PTR != "29-May") %>%
+  filter(`Date PTR` != "29-May") %>%
   mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
   arrange(sampid, .by_group = TRUE) -> trait_raw_2
 
 trait_raw_2 %>% 
-  filter(Date.PTR != "23-May") %>%
+  filter(`Date PTR` != "23-May") %>%
   mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
   arrange(sampid, .by_group = TRUE) -> trait_raw
 ```
@@ -98,7 +100,7 @@ trait_raw_2 %>%
 - NA's not resolved by averaging clones will be imputed using nearest neighbor. These zeros are not informative and are missing data.
 ```{r}
 # Leaf data averaging 
-trait_raw[,17:19] %>% 
+trait_raw[,18:20] %>% 
   gather(key = "trait", value = "value") %>% 
   ggplot(aes(x = trait, y = value)) + 
   geom_boxplot()
@@ -109,7 +111,7 @@ trait_raw[,17:19] %>%
 
 #Averaging clones for leaf data and removing NAs
 ```{r}
-trait_raw[,c(2, 17:19),] %>% 
+trait_raw[,c(2, 18:20),] %>% 
   group_by(sampid) %>% # sampid is the unique identifier for the clones
   summarise_at(vars(starts_with("Leaf")), mean, na.rm = TRUE) %>% 
   mutate_at(vars(starts_with("Leaf")), list(~ as.numeric(ifelse(. == "NaN", "NA", .)))) %>% 
@@ -134,7 +136,7 @@ leaf_data[,2:4] %>%
 ```{r}
 # Growth and Development traits -------------------------------------------
 
-trait_raw[,10:16] %>% 
+trait_raw[,11:17] %>% 
   gather(key = "trait", value = "value") %>% 
   drop_na() %>% 
   ggplot(aes(x = trait, y = value)) + 
@@ -145,10 +147,10 @@ trait_raw[,10:16] %>%
 - For days until gametophores were produced, some values are 100 because that sample never produced gametophores. Oringinally we thought to put in a very high value for the number of days however, that was not informative as it skewed the data. Here, we will convert all 100's to "0" and then added 21 days. 21 days is reasonable to use because that was the last day we collected data 
 -All other outliers were noticable as most likely a misprint and fixed.
 ```{r}
-outliers_area <- which(trait_raw$Avg_Area._Week_3>50)
+outliers_area <- which(trait_raw$Avg_Area_Week_3>50)
 trait_raw[outliers_area,]
 
-outliers_circ <- which(trait_raw$Avg_Circularity_Week.3>50)
+outliers_circ <- which(trait_raw$Avg_Circularity_Week_3>50)
 trait_raw[outliers_circ,]
 
 #Converting what we originally input as 100 to 0. 100 was entered for samples that never produced gametophores but it skews the data so we are using 21 which is the max amount of days. 
@@ -170,12 +172,12 @@ trait_raw$Avg_Days_til_Gam[outliers_zero] <- (trait_raw$Avg_Days_til_Gam[outlier
 These values had mistakes in the number of decimal places and included a typo making a value be negative. After adjusting these values, we check again for errors. 
 ```{r}
 #Removing samples with mistake in decimal place
-trait_raw$Avg_Area._Week_3[outliers_area] <- trait_raw$Avg_Area._Week_3[outliers_area] / 1000
-trait_raw$Avg_Circularity_Week.3[outliers_circ] <- trait_raw$Avg_Circularity_Week.3[outliers_circ] / 1000
+trait_raw$Avg_Area_Week_3[outliers_area] <- trait_raw$Avg_Area_Week_3[outliers_area] / 1000
+trait_raw$Avg_Circularity_Week_3[outliers_circ] <- trait_raw$Avg_Circularity_Week_3[outliers_circ] / 1000
 
 
 # check again 
-trait_raw[,10:16] %>% 
+trait_raw[,11:17] %>% 
   gather(key = "trait", value = "value") %>% 
   drop_na() %>% 
   ggplot(aes(x = trait, y = value)) + 
@@ -185,14 +187,14 @@ trait_raw[,10:16] %>%
 
 ```{r}
 #Removing outliers that were negative which was a typo
-negs <- which(trait_raw$Avg_Perimeter_Rate < 0)
+negs <- which(trait_raw$Avg_Perim_Rate < 0)
 trait_raw[negs,]
 
-trait_raw$Avg_Perimeter_Rate[negs]
-trait_raw$Avg_Perimeter_Rate[negs] <- trait_raw$Avg_Perimeter_Rate[negs] /-10
+trait_raw$Avg_Perim_Rate[negs]
+trait_raw$Avg_Perim_Rate[negs] <- trait_raw$Avg_Perim_Rate[negs] /-10
 
 # Check visually once more...
-trait_raw[,10:16] %>% 
+trait_raw[,11:17] %>% 
   gather(key = "trait", value = "value") %>% 
   drop_na() %>% 
   ggplot(aes(x = trait, y = value)) + 
@@ -201,7 +203,7 @@ trait_raw[,10:16] %>%
 
 #Combining final data for growth and development data
 ```{r}
-trait_raw[,c(2, 10:16)] %>% 
+trait_raw[,c(2, 11:17)] %>% 
   drop_na() %>% 
   distinct()-> gro_dev_data
 ```
@@ -215,10 +217,10 @@ trait_raw[,c(2, 10:16)] %>%
 # Reproduction variable ---------------------------------------------------
 trait_raw %>% 
   filter(ssex == "m") %>% 
-  select(sampid, ssex, Avg_Male_Buds.Stem)%>% 
+  select(sampid, ssex, `Avg_Male_Buds/Stem`)%>% 
   drop_na() %>% 
   group_by(sampid) %>% 
-  summarise(raw_av = mean(Avg_Male_Buds.Stem)) %>% 
+  summarise(raw_av = mean(`Avg_Male_Buds/Stem`)) %>% 
   mutate(reprovar = scale(raw_av),
          ssex = "m")  -> male_reprovar
 
@@ -296,10 +298,10 @@ scaled_traits %>%
 # Also, remove the NAs, there's a lot at the end
 # Remove '(2)' notation from sample ids
 
-#names(rawdata)
-voc_raw <- master[,c(1,2,4,5, 20:109)] %>% 
-  rename(famid = Fam..,
-         sampid = Sample.Name,
+
+voc_raw <- master[,c(1,2,5,6, 21:110)] %>% 
+  rename(famid = Fam,
+         sampid = `Sample Name`,
          ssex = Sample_Sex) %>% 
   drop_na() %>% 
   mutate(sampid = str_replace_all(sampid, "\\(.*\\)", ""),
@@ -322,18 +324,19 @@ voc_raw$m111.0 <- as.numeric(str_replace(voc_raw$m111.0, "E", "e"))
 # Removing May 23, 29, and 30
 These days were clear outliers among all other days of collection
 ```{r}
+
 voc_raw %>% 
-  filter(Date.PTR!= "30-May") %>%
+  filter(`Date PTR`!= "30-May") %>%
   mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
   arrange(sampid, .by_group = TRUE)-> vocs
 
 vocs %>% 
-  filter(Date.PTR != "29-May") %>%
+  filter(`Date PTR` != "29-May") %>%
   mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
   arrange(sampid, .by_group = TRUE) -> vocs_2
 
 vocs_2 %>% 
-  filter(Date.PTR != "23-May") %>%
+  filter(`Date PTR` != "23-May") %>%
   mutate_if(is.numeric, list(~ ifelse(. < 0, 0, .))) %>% 
   arrange(sampid, .by_group = TRUE) -> vocs_3
 ```
@@ -343,7 +346,7 @@ vocs_2 %>%
 ```{r}
 
 vocs_3 %>% 
-  select(-famid, -sampid, -ssex, -Date.PTR) %>% 
+  select(-famid, -sampid, -ssex, -`Date PTR`) %>% 
   mutate_if(is.numeric, function(x) ifelse(x > 0, 1, 0)) %>% 
   colSums() %>% 
   data.frame() %>% 
@@ -365,6 +368,11 @@ vocs_3 %>%
   distinct() -> voc_data
 ```
 
+```{r}
+#m99.08 was multiplied by 5*10^6 and not 5*10^-6. fix this. 
+trait_raw$Avg_Perim_Rate[negs] <- trait_raw$Avg_Perim_Rate[negs] /-10
+voc_data$m99.08 <- voc_data$m99.08* (10^-12)
+```
 
 # Exploration with clones in VOC data set
 ```{r}
@@ -387,6 +395,10 @@ long_voc_data %>%
   scale_y_log10()
 
 ```
+
+
+
+
 #Cut off values for voc data
 -We see that there are three big outliers. The values are so small and over the machine's detection thresold, so we will make them equal to zero.
 -We used a cut off for the mass flux of 10 e-10 because anything below this could be due to variation from subtracting out the background taken from the averaging multiple blank samples (control) used during that specific batch of samples
@@ -395,12 +407,21 @@ long_voc_data %>%
 # Making these outliers be zero
 voc_data[voc_data < 1e-15 & voc_data>0] <- 0
 
-#Cuttoff at 10e-10 in original data file
-voc_data[voc_data < 10e-10] <- 0
+#Cuttoff at 10e-10 in original data file. This is a very liberal cut off. 
+voc_data[voc_data < 1e-10] <- 0
 
 long_voc_data <- voc_data %>% 
   gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
   mutate(voc = factor(voc, levels = unique(voc)))
+  
+long_voc_data%>%
+filter(conc > 0) %>%
+  ggplot(aes(x = voc, y = conc)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_y_log10()
+
 
 
 ```
@@ -411,7 +432,7 @@ long_voc_data %>%
   ggplot(aes(x = voc, y = conc)) + 
   geom_boxplot() +
   theme_bw() + 
-  lims(y = c(1e-13, 1e-03)) +
+  lims(y = c(1e-15, 1e-02)) +
   theme(axis.text.x = element_text(angle = 90)) +
   scale_y_log10()
 ```
