@@ -1,0 +1,3185 @@
+---
+title: "Matrices"
+author: "Leslie Kollar"
+date: "2/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, fig.width = 40, fig.height = 20)
+```
+
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(vegan)
+library(plotly)
+library(corrplot)
+library(ggpubr)
+library(Hmisc)
+library(vegan)
+library(reshape2)
+library(parallel)
+library(dfoptim)
+library(lsmeans)
+library(psych)
+library(DMwR)
+theme_set(theme_bw())
+```
+
+#Date files used in the clean data folder on github
+- clean_master_log_scaled--  clean master both log scaled and transformed
+- clean_master-- clean master not log transformed and not scaled
+- clean_master_log-- clean master log transformed but not scaled
+-all data was imputed
+
+```{r}
+
+#All data files imputed using nearest neighbor
+clean_master_log_scaled <- readRDS("~/Desktop/Moss_matrix/cleandata/clean_master_matrix_scaled_log_imputed.RDS") #All traits scaled and VOC log
+
+clean_master_log <- readRDS("~/Desktop/Moss_matrix/cleandata/clean_master_matrix_log_voc_imputed.RDS") #VOCs log transformed
+
+write.csv(clean_master_log, "~/Desktop/Moss_matrix/cleandata/clean_master_matrix_log_voc_imputed.csv")
+
+clean_master <- readRDS("~/Desktop/Moss_matrix/cleandata/clean_master_matrix_imputed.RDS") # VOCs not log transforned
+```
+
+
+```{r}
+#Seperating by sex with log data only
+
+clean_master_log%>%
+  filter(ssex=="m")-> male_master_log
+
+clean_master_log%>%
+  filter(ssex=="f")-> female_master_log
+
+
+#Seperating by sex for seperate analyses wwith log and scaled data
+#Scaling with individual sexes
+
+clean_master_log%>%
+  filter(ssex=="m")%>%
+  mutate_at(vars(starts_with("m")), scale)-> male_master_log_scale
+
+clean_master_log%>%
+  filter(ssex=="f")%>%
+  mutate_at(vars(starts_with("m")), scale)-> female_master_log_scale
+
+```
+
+
+```{r}
+
+#Run PCA
+
+clean_master_scaled_VOCs <- rda(clean_master_log_scaled[,13:85])
+
+#Figure for log transformed data
+biplot(clean_master_scaled_VOCs, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+
+ssex.colors <- levels(factor(clean_master_scaled_VOCs$ssex))
+
+
+#females
+clean_master_scaled_VOCs_females_pca <- rda(female_master_log_scale[,13:85])
+
+# Figure for log transformed data
+biplot(clean_master_scaled_VOCs_females_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+
+
+#males
+clean_master_scaled_VOCs_males_pca <- rda(male_master_log_scale[,13:85])
+
+# Figure for log transformed data
+biplot(clean_master_scaled_VOCs_males_pca, display = c("sites", 
+                   "species"),
+       type = c("text",
+                "points"))
+
+```
+I am not sure I see a different in the log transformed data and the logtransformed + scaled data. I think moving forward its best to use the logtransformed and scaled data.
+
+### PCA reducation chosing axes that explain 80% of the total variance and eigenvalues have to be above 1
+```{r}
+#Scree plot shows a lot of the variation is explained in PC1
+#screeplot(log_st_pca)
+#abline(a=1,b=0)
+
+## How do we know how many to chose?
+#summary(log_st_pca)
+
+#Expressed as cummalitve percentages
+#round(cumsum(100*log_st_pca$CA$eig/sum(log_st_pca$CA$eig)),2)
+
+################
+#females: Scree plot shows a lot of the variation is explained in PC1
+screeplot(clean_master_scaled_VOCs_females_pca)
+abline(a=1,b=0)
+
+## How do we know how many to chose?
+summary(clean_master_scaled_VOCs_females_pca)
+
+#Expressed as cummalitve percentages
+round(cumsum(100*clean_master_scaled_VOCs_females_pca$CA$eig/sum(clean_master_scaled_VOCs_females_pca$CA$eig)),2)
+
+
+#males: Scree plot shows a lot of the variation is explained in PC1
+screeplot(clean_master_scaled_VOCs_males_pca)
+abline(a=1,b=0)
+
+## How do we know how many to chose?
+summary(clean_master_scaled_VOCs_males_pca)
+
+#Expressed as cummalitve percentages
+round(cumsum(100*clean_master_scaled_VOCs_males_pca$CA$eig/sum(clean_master_scaled_VOCs_males_pca$CA$eig)),2)
+```
+
+
+```{r}
+#females
+library(lme4)
+VOC_traits_female_1 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,1]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_1)
+
+VOC_traits_female_2 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,2]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_2)
+
+VOC_traits_female_3 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,3]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_3)
+
+VOC_traits_female_4 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,4]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_4)
+
+VOC_traits_female_5 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,5]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_5)
+
+VOC_traits_female_6 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,6]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_6)
+
+VOC_traits_female_7 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,7]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_7)
+
+VOC_traits_female_8 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,8]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_8)
+
+VOC_traits_female_9 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,9]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_9)
+
+VOC_traits_female_10 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,10]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_10)
+
+VOC_traits_female_11 <- lm(clean_master_scaled_VOCs_females_pca$CA$u[,11]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_females,  na.action = na.omit)
+
+summary(VOC_traits_female_10)
+```
+
+```{r}
+#Males
+VOC_traits_male_1 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,1]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_1)
+
+VOC_traits_male_2 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,2]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_2)
+
+VOC_traits_male_3 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,3]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_3)
+
+VOC_traits_male_4 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,4]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_4)
+
+VOC_traits_male_5 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,5]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_5)
+
+VOC_traits_male_6 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,6]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_6)
+
+VOC_traits_male_7 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,7]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_7)
+
+VOC_traits_male_8 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,8]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_8)
+
+VOC_traits_male_9 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,9]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+ repro+ famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_9)
+
+VOC_traits_male_10 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,10]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_10)
+
+VOC_traits_male_11 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,11]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_11)
+
+VOC_traits_male_12 <- lm(clean_master_scaled_VOCs_males_pca$CA$u[,12]~ area_wk3 + perim_wk3 +  circ_wk3+ days21+ days_gam+ leaf_length+ leaf_area+ leaf_perim+  repro+famid ,data = clean_master_scaled_VOCs_males,  na.action = na.omit)
+
+summary(VOC_traits_male_12)
+
+```
+
+#Calculating variances for each trait (VOCs and life history)
+```{r}
+#Using transformed data because that will give a better estimate of the parameters
+
+m30 <- lm(clean_master_log$m30.99  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m30_no_fam <- lm(clean_master_log$m30.99  ~ssex , data = clean_master_log,  na.action = na.omit)
+m30_no_sex <- lm(clean_master_log$m30.99  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m30_full <- lm(clean_master_log$m30.99  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m30_SD <- (BIC(m30_no_sex)- BIC(m30))
+m30_Fam <- (BIC(m30_no_fam)- BIC(m30))
+m30_int <- (BIC(m30)- BIC(m30_full))
+
+ls_m30.99 <- lsmeans(m30, ~ssex)
+```
+
+```{r}
+m31 <- lm(clean_master_log$m31.01  ~ssex + famid , data = clean_master_log, na.action = na.omit)
+m31_no_fam <- lm(clean_master_log$m31.01  ~ssex , data = clean_master_log,  na.action = na.omit)
+m31_no_sex <- lm(clean_master_log$m31.01  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m31_full <- lm(clean_master_log$m31.01  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m31_SD <- (BIC(m31_no_sex)- BIC(m31))
+m31_Fam <- (BIC(m31_no_fam)- BIC(m31))
+m31_int <- (BIC(m31)- BIC(m31_full))
+
+ls_m31 <- lsmeans(m31, ~ssex)
+```
+
+```{r}
+m31.99 <- lm(clean_master_log$m31.99  ~ssex + famid , data = clean_master_log, na.action = na.omit)
+m31.99_no_fam <- lm(clean_master_log$m31.99  ~ssex , data = clean_master_log,  na.action = na.omit)
+m31.99_no_sex <- lm(clean_master_log$m31.99  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m31.99_full <- lm(clean_master_log$m31.99  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m31.99_SD <- (BIC(m31.99_no_sex)- BIC(m31.99))
+m31.99_Fam <- (BIC(m31.99_no_fam)- BIC(m31.99))
+m31.99_int <- (BIC(m31.99)- BIC(m31.99_full))
+
+ls_m31.99 <- lsmeans(m31.99, ~ssex)
+```
+
+```{r}
+m33 <- lm(clean_master_log$m33.03  ~ssex + famid , data = clean_master_log, na.action = na.omit)
+m33_no_fam <- lm(clean_master_log$m33.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m33_no_sex <- lm(clean_master_log$m33.03  ~  famid , data = clean_master_log,  na.action = na.omit)
+m33_full <- lm(clean_master_log$m33.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m33_SD <- (BIC(m33_no_sex)- BIC(m33))
+m33_Fam <- (BIC(m33_no_fam)- BIC(m33))
+m33_int <- (BIC(m33)- BIC(m33_full))
+
+ls_m33 <- lsmeans(m33, ~ssex)
+```
+
+```{r}
+m34 <- lm(clean_master_log$m34.02  ~ssex + famid , data = clean_master_log, na.action = na.omit)
+m34_no_fam <- lm(clean_master_log$m34.02  ~ssex , data = clean_master_log,  na.action = na.omit)
+m34_no_sex <- lm(clean_master_log$m34.02  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m34_full <- lm(clean_master_log$m34.02  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m34_SD <- (BIC(m34_no_sex)- BIC(m34))
+m34_Fam <- (BIC(m34_no_fam)- BIC(m34))
+m34_int <- (BIC(m34)- BIC(m34_full))
+
+ls_m34 <- lsmeans(m34, ~ssex)
+```
+
+```{r}
+m37 <- lm(clean_master_log$m37.02  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m37_no_fam <- lm(clean_master_log$m37.02  ~ssex , data = clean_master_log,  na.action = na.omit)
+m37_no_sex <- lm(clean_master_log$m37.02  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m37_full <- lm(clean_master_log$m37.02  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m37_SD <- (BIC(m37_no_sex)- BIC(m37))
+m37_Fam <- (BIC(m37_no_fam)- BIC(m37))
+m37_int <- (BIC(m37)- BIC(m37_full))
+
+
+ls_m37 <- lsmeans(m37, ~ssex)
+```
+
+```{r}
+m39 <- lm(clean_master_log$m39.03  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m39_no_fam <- lm(clean_master_log$m39.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m39_no_sex <- lm(clean_master_log$m39.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m39_full <- lm(clean_master_log$m39.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m39_SD <- (BIC(m39_no_sex)- BIC(m39))
+m39_Fam <- (BIC(m39_no_fam)- BIC(m39))
+m39_int <- (BIC(m39)- BIC(m39_full))
+
+ls_m39 <- lsmeans(m39, ~ssex)
+```
+
+```{r}
+m41 <- lm(clean_master_log$m41.03  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m41_no_fam <- lm(clean_master_log$m41.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m41_no_sex <- lm(clean_master_log$m41.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m41_full <- lm(clean_master_log$m41.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m41_SD <- (BIC(m41_no_sex)- BIC(m41))
+m41_Fam <- (BIC(m41_no_fam)- BIC(m41))
+m41_int <- (BIC(m41)- BIC(m41_full))
+
+ls_m41 <- lsmeans(m41, ~ssex)
+```
+
+```{r}
+m42 <- lm(clean_master_log$m42.03  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m42.03_no_fam <- lm(clean_master_log$m42.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m42.03_no_sex <- lm(clean_master_log$m42.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m42.03_full <- lm(clean_master_log$m42.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m42_SD <- (BIC(m42.03_no_sex)- BIC(m42))
+m42_Fam <- (BIC(m42.03_no_fam)- BIC(m42))
+m42_int <- (BIC(m42)- BIC(m42.03_full))
+
+ls_m42 <- lsmeans(m42, ~ssex)
+```
+
+```{r}
+m43 <- lm(clean_master_log$m43.01  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m43_no_fam <- lm(clean_master_log$m43.01  ~ssex , data = clean_master_log,  na.action = na.omit)
+m43_no_sex <- lm(clean_master_log$m43.01  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m43_full <- lm(clean_master_log$m43.01  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m43_SD <- (BIC(m43_no_sex)- BIC(m43))
+m43_Fam <- (BIC(m43_no_fam)- BIC(m43))
+m43_int <- (BIC(m43)- BIC(m43_full))
+
+ls_m43 <- lsmeans(m43, ~ssex)
+```
+
+```{r}
+m44 <- lm(clean_master_log$m44.06  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m44_no_fam <- lm(clean_master_log$m44.06  ~ssex , data = clean_master_log,  na.action = na.omit)
+m44_no_sex <- lm(clean_master_log$m44.06  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m44_full <- lm(clean_master_log$m44.06  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m44_SD <- (BIC(m44_no_sex)- BIC(m44))
+m44_Fam <- (BIC(m44_no_fam)- BIC(m44))
+m44_int <- (BIC(m44)- BIC(m44_full))
+
+ls_m44 <- lsmeans(m44, ~ssex)
+```
+
+```{r}
+m45 <- lm(clean_master_log$m45.03  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m45_no_fam <- lm(clean_master_log$m45.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m45_no_sex <- lm(clean_master_log$m45.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m45_full <- lm(clean_master_log$m45.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m45_SD <- (BIC(m45_no_sex)- BIC(m45))
+m45_Fam <- (BIC(m45_no_fam)- BIC(m45))
+m45_int <- (BIC(m45)- BIC(m45_full))
+
+ls_m45 <- lsmeans(m45, ~ssex)
+```
+
+```{r}
+m46 <- lm(clean_master_log$m46.03  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m46_no_fam <- lm(clean_master_log$m46.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m46_no_sex <- lm(clean_master_log$m46.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m46_full <- lm(clean_master_log$m46.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m46_SD <- (BIC(m46_no_sex)- BIC(m46))
+m46_Fam <- (BIC(m46_no_fam)- BIC(m46))
+m46_int <- (BIC(m46)- BIC(m46_full))
+
+ls_m46 <- lsmeans(m46, ~ssex)
+
+```
+
+```{r}
+m46 <- lm(clean_master_log$m46.06  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m46_no_fam <- lm(clean_master_log$m46.06  ~ssex , data = clean_master_log,  na.action = na.omit)
+m46_no_sex <- lm(clean_master_log$m46.06  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m46_full <- lm(clean_master_log$m46.06  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m46_SD <- (BIC(m46_no_sex)- BIC(m46))
+m46_Fam <- (BIC(m46_no_fam)- BIC(m46))
+m46_int <- (BIC(m46)- BIC(m46_full))
+
+ls_m46 <- lsmeans(m46, ~ssex)
+
+```
+
+```{r}
+m47 <- lm(clean_master_log$m47.01  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m47_no_fam <- lm(clean_master_log$m47.01  ~ssex , data = clean_master_log,  na.action = na.omit)
+m47_no_sex <- lm(clean_master_log$m47.01  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m47_full <- lm(clean_master_log$m47.01  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m47_SD <- (BIC(m47_no_sex)- BIC(m47))
+m47_Fam <- (BIC(m47_no_fam)- BIC(m47))
+m47_int <- (BIC(m47)- BIC(m47_full))
+
+ls_m47 <- lsmeans(m47, ~ssex)
+```
+
+
+```{r}
+
+m47.98 <- lm(clean_master_log$m47.98  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m47.98_no_fam <- lm(clean_master_log$m47.98  ~ssex , data = clean_master_log,  na.action = na.omit)
+m47.98_no_sex <- lm(clean_master_log$m47.98  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m47.98_full <- lm(clean_master_log$m47.98  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m47.98_SD <- (BIC(m47.98_no_sex)- BIC(m47.98))
+m47.98_Fam <- (BIC(m47.98_no_fam)- BIC(m47.98))
+m47.98_int <- (BIC(m47.98)- BIC(m47.98_full))
+
+ls_m47.98 <- lsmeans(m47.98, ~ssex)
+```
+
+```{r}
+
+m49 <- lm(clean_master_log$m49.02  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m49.02_no_fam <- lm(clean_master_log$m49.02  ~ssex , data = clean_master_log,  na.action = na.omit)
+m49.02_no_sex <- lm(clean_master_log$m49.02  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m49.02_full <- lm(clean_master_log$m49.02  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m49.02_SD <- (BIC(m49.02_no_sex)- BIC(m49))
+m49.02_Fam <- (BIC(m49.02_no_fam)- BIC(m49))
+m49.02_int <- (BIC(m49)- BIC(m49.02_full))
+
+ls_m49.02 <- lsmeans(m49, ~ssex)
+
+```
+
+```{r}
+
+m49.05 <- lm(clean_master_log$m49.05  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m49.05_no_fam <- lm(clean_master_log$m49.05  ~ssex , data = clean_master_log,  na.action = na.omit)
+m49.05_no_sex <- lm(clean_master_log$m49.05  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m49.05_full <- lm(clean_master_log$m49.05  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m49.05_SD <- (BIC(m49.05_no_sex)- BIC(m49.05))
+m49.05_Fam <- (BIC(m49.05_no_fam)- BIC(m49.05))
+m49.05_int <- (BIC(m49.05)- BIC(m49.05_full))
+
+ls_m49.05 <- lsmeans(m49.05, ~ssex)
+
+```
+
+```{r}
+m49.99 <- lm(clean_master_log$m49.99  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m49.99_no_fam <- lm(clean_master_log$m49.99  ~ssex , data = clean_master_log,  na.action = na.omit)
+m49.99_no_sex <- lm(clean_master_log$m49.99  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m49.99_full <- lm(clean_master_log$m49.99  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m49.99_SD <- (BIC(m49.99_no_sex)- BIC(m49.99))
+m49.99_Fam <- (BIC(m49.99_no_fam)- BIC(m49.99))
+m49.99_int <- (BIC(m49.99)- BIC(m49.99_full))
+
+ls_m49.99 <- lsmeans(m49.99, ~ssex)
+```
+```{r}
+m55.03 <- lm(clean_master_log$m55.03  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m55.03_no_fam <- lm(clean_master_log$m55.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m55.03_no_sex <- lm(clean_master_log$m55.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m55.03_full <- lm(clean_master_log$m55.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m55.03_SD <- (BIC(m55.03_no_sex)- BIC(m55.03))
+m55.03_Fam <- (BIC(m55.03_no_fam)- BIC(m55.03))
+m55.03_int <- (BIC(m55.03)- BIC(m55.03_full))
+
+ls_m55.03 <- lsmeans(m55.03, ~ssex)
+```
+
+```{r}
+m59 <- lm(clean_master_log$m59.04  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m59.04_no_fam <- lm(clean_master_log$m59.04  ~ssex , data = clean_master_log,  na.action = na.omit)
+m59.04_no_sex <- lm(clean_master_log$m59.04  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m59.04_full <- lm(clean_master_log$m59.04  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m59.04_SD <- (BIC(m59.04_no_sex)- BIC(m59))
+m59.04_Fam <- (BIC(m59.04_no_fam)- BIC(m59))
+m59.04_int <- (BIC(m59)- BIC(m59.04_full))
+
+ls_m59 <- lsmeans(m59, ~ssex)
+```
+
+```{r}
+m57.02 <- lm(clean_master_log$m57.02  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m57.02_no_fam <- lm(clean_master_log$m57.02  ~ssex , data = clean_master_log,  na.action = na.omit)
+m57.02_no_sex <- lm(clean_master_log$m57.02  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m57.02_full <- lm(clean_master_log$m57.02  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m57.02_SD <- (BIC(m57.02_no_sex)- BIC(m57.02))
+m57.02_Fam <- (BIC(m57.02_no_fam)- BIC(m57.02))
+m57.02_int <- (BIC(m57.02)- BIC(m57.02_full))
+
+ls_m57.02 <- lsmeans(m57.02, ~ssex)
+```
+
+
+```{r}
+m57.05 <- lm(clean_master_log$m57.05  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m57.05_no_fam <- lm(clean_master_log$m57.05  ~ssex , data = clean_master_log,  na.action = na.omit)
+m57.05_no_sex <- lm(clean_master_log$m57.05  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m57.05_full <- lm(clean_master_log$m57.05  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m57.05_SD <- (BIC(m57.05_no_sex)- BIC(m57.05))
+m57.05_Fam <- (BIC(m57.05_no_fam)- BIC(m57.05))
+m57.05_int <- (BIC(m57.05)- BIC(m57.05_full))
+
+ls_m57.05 <- lsmeans(m57.05, ~ssex)
+```
+
+```{r}
+m59.04 <- lm(clean_master_log$m59.04  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m59.04_no_fam <- lm(clean_master_log$m59.04  ~ssex , data = clean_master_log,  na.action = na.omit)
+m59.04_no_sex <- lm(clean_master_log$m59.04  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m59.04_full <- lm(clean_master_log$m59.04  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m59.04_SD <- (BIC(m59.04_no_sex)- BIC(m59.04))
+m59.04_Fam <- (BIC(m59.04_no_fam)- BIC(m59.04))
+m59.04_int <- (BIC(m59.04)- BIC(m59.04_full))
+
+ls_m59 <- lsmeans(m59, ~ssex)
+```
+
+```{r}
+m61.02 <- lm(clean_master_log$m61.02  ~ssex +famid , data = clean_master_log,  na.action = na.omit)
+m61.02_no_fam <- lm(clean_master_log$m61.02  ~ssex , data = clean_master_log,  na.action = na.omit)
+m61.02_no_sex <- lm(clean_master_log$m61.02  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m61.02_full <- lm(clean_master_log$m61.02  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m61.02_SD <- (BIC(m61.02_no_sex)- BIC(m61.02))
+m61.02_Fam <- (BIC(m61.02_no_fam)- BIC(m61.02))
+m61.02_int <- (BIC(m61.02)- BIC(m61.02_full))
+
+ls_m61 <- lsmeans(m61.02, ~ssex)
+```
+
+```{r}
+m62.02 <- lm(clean_master_log$m62.02  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m62.02_no_fam <- lm(clean_master_log$m62.02 ~ ssex , data = clean_master_log,  na.action = na.omit)
+m62.02_no_sex <- lm(clean_master_log$m62.02  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m62.02_full <- lm(clean_master_log$m62.02  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m62.02_SD <- (BIC(m62.02_no_sex)- BIC(m62.02))
+m62.02_Fam <- (BIC(m62.02_no_fam)- BIC(m62.02))
+m62.02_int <- (BIC(m62.02)- BIC(m62.02_full))
+
+ls_m62 <- lsmeans(m62.02, ~ssex)
+``` 
+
+```{r}
+m63.02 <- lm(clean_master_log$m63.02  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m63.02_no_fam <- lm(clean_master_log$m63.02  ~ssex , data = clean_master_log,  na.action = na.omit)
+m63.02_no_sex <- lm(clean_master_log$m63.02  ~  famid , data = clean_master_log,  na.action = na.omit)
+m63.02_full <- lm(clean_master_log$m63.02  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m63.02_SD <- (BIC(m63.02_no_sex)- BIC(m63.02))
+m63.02_Fam <- (BIC(m63.02_no_fam)- BIC(m63.02))
+m63.02_int <- (BIC(m63.02)- BIC(m63.02_full))
+
+ls_m63 <- lsmeans(m63.02, ~ssex)
+```
+
+```{r}
+m69.00 <- lm(clean_master_log$m69.00  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m69.00_no_fam <- lm(clean_master_log$m69.00  ~ssex , data = clean_master_log,  na.action = na.omit)
+m69.00_no_sex <- lm(clean_master_log$m69.00  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m69.00_full <- lm(clean_master_log$m69.00  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m69.00_SD <- (BIC(m69.00_no_sex)- BIC(m69.00))
+m69.00_Fam <- (BIC(m69.00_no_fam)- BIC(m69.00))
+m69.00_int <- (BIC(m69.00)- BIC(m69.00_full))
+
+ls_m69.00 <- lsmeans(m69.00, ~ssex)
+```
+
+```{r}
+m69.06 <- lm(clean_master_log$m69.06  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m69.06_no_fam <- lm(clean_master_log$m69.06  ~ssex , data = clean_master_log,  na.action = na.omit)
+m69.06_no_sex <- lm(clean_master_log$m69.06  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m69.06_full <- lm(clean_master_log$m69.06  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m69.06_SD <- (BIC(m69.06_no_sex)- BIC(m69.06))
+m69.06_Fam <- (BIC(m69.06_no_fam)- BIC(m69.06))
+m69.06_int <- (BIC(m69.06)- BIC(m69.06_full))
+
+ls_m69.06 <- lsmeans(m69.06, ~ssex)
+```
+
+```{r}
+m71.03 <- lm(clean_master_log$m71.03  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m71.03_no_fam <- lm(clean_master_log$m71.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m71.03_no_sex <- lm(clean_master_log$m71.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m71.03_full <- lm(clean_master_log$m71.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m71.03_SD <- (BIC(m71.03_no_sex)- BIC(m71.03))
+m71.03_Fam <- (BIC(m71.03_no_fam)- BIC(m71.03))
+m71.03_int <- (BIC(m71.03)- BIC(m71.03_full))
+
+ls_m71 <- lsmeans(m71.03, ~ssex)
+
+```
+
+```{r}
+
+m73.03 <- lm(clean_master_log$m73.03  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m73.03_no_fam <- lm(clean_master_log$m73.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m73.03_no_sex <- lm(clean_master_log$m73.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m73.03_full <- lm(clean_master_log$m73.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m73.03_SD <- (BIC(m73.03_no_sex)- BIC(m73.03))
+m73.03_Fam <- (BIC(m73.03_no_fam)- BIC(m73.03))
+m73.03_int <- (BIC(m73.03)- BIC(m73.03_full))
+
+ls_m73 <- lsmeans(m73.03, ~ssex)
+```
+
+```{r}
+m75.04 <- lm(clean_master_log$m75.04  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m75.04_no_fam <- lm(clean_master_log$m75.04  ~ssex , data = clean_master_log,  na.action = na.omit)
+m75.04_no_sex <- lm(clean_master_log$m75.04  ~ famid , data = clean_master_log,  na.action = na.omit)
+m75.04_full <- lm(clean_master_log$m75.04  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m75.04_SD <- (BIC(m75.04_no_sex)- BIC(m75.04))
+m75.04_Fam <- (BIC(m75.04_no_fam)- BIC(m75.04))
+m75.04_int <- (BIC(m75.04)- BIC(m75.04_full))
+
+ls_m75 <- lsmeans(m75.04, ~ssex)
+```
+
+```{R}
+m77.05 <- lm(clean_master_log$m77.05  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m77.05_no_fam <- lm(clean_master_log$m77.05  ~ssex , data = clean_master_log,  na.action = na.omit)
+m77.05_no_sex <- lm(clean_master_log$m77.05  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m77.05_full <- lm(clean_master_log$m77.05  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m77.05_SD <- (BIC(m77.05_no_sex)- BIC(m77.05))
+m77.05_Fam <- (BIC(m77.05_no_fam)- BIC(m77.05))
+m77.05_int <- (BIC(m77.05)- BIC(m77.05_full))
+
+ls_m77 <- lsmeans(m77.05, ~ssex)
+
+```
+
+```{r}
+m79.05 <- lm(clean_master_log$m79.05  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m79.05_no_fam <- lm(clean_master_log$m79.05  ~ssex , data = clean_master_log,  na.action = na.omit)
+m79.05_no_sex <- lm(clean_master_log$m79.05  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m79.05_full <- lm(clean_master_log$m79.05  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m79.05_SD <- (BIC(m79.05_no_sex)- BIC(m79.05))
+m79.05_Fam <- (BIC(m79.05_no_fam)- BIC(m79.05))
+m79.05_int <- (BIC(m79.05)- BIC(m79.05_full))
+
+ls_m79 <- lsmeans(m79.05, ~ssex)
+```
+
+```{r}
+m81.06 <- lm(clean_master_log$m81.06  ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m81.06_no_fam <- lm(clean_master_log$m81.06  ~ssex , data = clean_master_log,  na.action = na.omit)
+m81.06_no_sex <- lm(clean_master_log$m81.06  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m81.06_full <- lm(clean_master_log$m81.06  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m81.06_SD <- (BIC(m81.06_no_sex)- BIC(m81.06))
+m81.06_Fam <- (BIC(m81.06_no_fam)- BIC(m81.06))
+m81.06_int <- (BIC(m81.06)- BIC(m81.06_full))
+
+ls_m81 <- lsmeans(m81.06, ~ssex)
+```
+
+```{r}
+m83.05 <- lm(clean_master_log$m83.05 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m83.05_no_fam <- lm(clean_master_log$m83.05  ~ssex , data = clean_master_log,  na.action = na.omit)
+m83.05_no_sex <- lm(clean_master_log$m83.05  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m83.05_full <- lm(clean_master_log$m83.05  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m83.05_SD <- (BIC(m83.05_no_sex)- BIC(m83.05))
+m83.05_Fam <- (BIC(m83.05_no_fam)- BIC(m83.05))
+m83.05_int <- (BIC(m83.05)- BIC(m83.05_full))
+
+ls_m83 <- lsmeans(m83.05, ~ssex)
+```
+
+```{r}
+m85.06 <- lm(clean_master_log$m85.06 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m85.06_no_fam <- lm(clean_master_log$m85.06  ~ssex , data = clean_master_log,  na.action = na.omit)
+m85.06_no_sex <- lm(clean_master_log$m85.06  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m85.06_full <- lm(clean_master_log$m85.06  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m85.06_SD <- (BIC(m85.06_no_sex)- BIC(m85.06))
+m85.06_Fam <- (BIC(m85.06_no_fam)- BIC(m85.06))
+m85.06_int <- (BIC(m85.06)- BIC(m85.06_full))
+
+ls_m85 <- lsmeans(m85.06, ~ssex)
+```
+
+```{r}
+
+m86.03 <- lm(clean_master_log$m86.03 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m86.03_no_fam <- lm(clean_master_log$m86.03  ~ssex , data = clean_master_log,  na.action = na.omit)
+m86.03_no_sex <- lm(clean_master_log$m86.03  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m86.03_full <- lm(clean_master_log$m86.03  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m86.03_SD <- (BIC(m86.03_no_sex)- BIC(m86.03))
+m86.03_Fam <- (BIC(m86.03_no_fam)- BIC(m86.03))
+m86.03_int <- (BIC(m86.03)- BIC(m86.03_full))
+
+ls_m86 <- lsmeans(m86.03, ~ssex)
+```
+
+```{r}
+m87.04 <- lm(clean_master_log$m87.04 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m87.04_no_fam <- lm(clean_master_log$m87.04  ~ssex , data = clean_master_log,  na.action = na.omit)
+m87.04_no_sex <- lm(clean_master_log$m87.04  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m87.04_full <- lm(clean_master_log$m87.04  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m87.04_SD <- (BIC(m87.04_no_sex)- BIC(m87.04))
+m87.04_Fam <- (BIC(m87.04_no_fam)- BIC(m87.04))
+m87.04_int <- (BIC(m87.04)- BIC(m87.04_full))
+ls_m87 <- lsmeans(m87.04, ~ssex)
+```
+
+```{r}
+m89.05 <- lm(clean_master_log$m89.05 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m89.05_no_fam <- lm(clean_master_log$m89.05  ~ssex , data = clean_master_log,  na.action = na.omit)
+m89.05_no_sex <- lm(clean_master_log$m89.05  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m89.05_full <- lm(clean_master_log$m89.05  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m89.05_SD <- (BIC(m89.05_no_sex)- BIC(m89.05))
+m89.05_Fam <- (BIC(m89.05_no_fam)- BIC(m89.05))
+m89.05_int <- (BIC(m89.05)- BIC(m89.05_full))
+
+ls_m89 <- lsmeans(m89.05, ~ssex)
+```
+
+```{r}
+m89.09 <- lm(clean_master_log$m89.09 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m89.09_no_fam <- lm(clean_master_log$m89.09  ~ssex , data = clean_master_log,  na.action = na.omit)
+m89.09_no_sex <- lm(clean_master_log$m89.09  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m89.09_full <- lm(clean_master_log$m89.09  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m89.09_SD <- (BIC(m89.09_no_sex)- BIC(m89.09))
+m89.09_Fam <- (BIC(m89.09_no_fam)- BIC(m89.09))
+m89.09_int <- (BIC(m89.09)- BIC(m89.09_full))
+
+ls_m89.09 <- lsmeans(m89.09, ~ssex)
+```
+
+```{r}
+m91.00 <- lm(clean_master_log$m91.00 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m91.00_no_fam <- lm(clean_master_log$m91.00  ~ssex , data = clean_master_log,  na.action = na.omit)
+m91.00_no_sex <- lm(clean_master_log$m91.00  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m91.00_full <- lm(clean_master_log$m91.00  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m91.00_SD <- (BIC(m91.00_no_sex)- BIC(m91.00))
+m91.00_Fam <- (BIC(m91.00_no_fam)- BIC(m91.00))
+m91.00_int <- (BIC(m91.00)- BIC(m91.00_full))
+
+ls_m91 <- lsmeans(m91.00, ~ssex)
+```
+
+```{r}
+m93.06 <- lm(clean_master_log$m93.06 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m93.06_no_fam <- lm(clean_master_log$m93.06  ~ssex , data = clean_master_log,  na.action = na.omit)
+m93.06_no_sex <- lm(clean_master_log$m93.06  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m93.06_full <- lm(clean_master_log$m93.06  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m93.06_SD <- (BIC(m93.06_no_sex)- BIC(m93.06))
+m93.06_Fam <- (BIC(m93.06_no_fam)- BIC(m93.06))
+m93.06_int <- (BIC(m93.06)- BIC(m93.06_full))
+
+ls_m93 <- lsmeans(m93.06, ~ssex)
+```
+
+```{r}
+m95.00 <- lm(clean_master_log$m95.00 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m95.00_no_fam <- lm(clean_master_log$m95.00  ~ssex , data = clean_master_log,  na.action = na.omit)
+m95.00_no_sex <- lm(clean_master_log$m95.00  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m95.00_full <- lm(clean_master_log$m95.00  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m95.00_SD <- (BIC(m95.00_no_sex)- BIC(m95.00))
+m95.00_Fam <- (BIC(m95.00_no_fam)- BIC(m95.00))
+m95.00_int <- (BIC(m95.00)- BIC(m95.00_full))
+
+ls_m95 <- lsmeans(m95.00, ~ssex)
+```
+
+```{r}
+m97.00 <- lm(clean_master_log$m97.00 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m97.00_no_fam <- lm(clean_master_log$m97.00  ~ssex , data = clean_master_log,  na.action = na.omit)
+m97.00_no_sex <- lm(clean_master_log$m97.00  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m97.00_full <- lm(clean_master_log$m97.00  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m97.00_SD <- (BIC(m97.00_no_sex)- BIC(m97.00))
+m97.00_Fam <- (BIC(m97.00_no_fam)- BIC(m97.00))
+m97.00_int <- (BIC(m97.00)- BIC(m97.00_full))
+
+ls_m97 <- lsmeans(m97.00, ~ssex)
+```
+
+```{r}
+m98.00 <- lm(clean_master_log$m98.00 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m98.00_no_fam <- lm(clean_master_log$m98.00  ~ssex , data = clean_master_log,  na.action = na.omit)
+m98.00_no_sex <- lm(clean_master_log$m98.00  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m98.00_full <- lm(clean_master_log$m98.00  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m98.00_SD <- (BIC(m98.00_no_sex)- BIC(m98.00))
+m98.00_Fam <- (BIC(m98.00_no_fam)- BIC(m98.00))
+m98.00_int <- (BIC(m98.00)- BIC(m98.00_full))
+
+ls_m98 <- lsmeans(m98.00, ~ssex)
+```
+
+
+```{r}
+m99.08 <- lm(clean_master_log$m99.08 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m99.08_no_fam <- lm(clean_master_log$m99.08  ~ssex , data = clean_master_log,  na.action = na.omit)
+m99.08_no_sex <- lm(clean_master_log$m99.08  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m99.08_full <- lm(clean_master_log$m99.08  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m99.08_SD <- (BIC(m99.08_no_sex)- BIC(m99.08))
+m99.08_Fam <- (BIC(m99.08_no_fam)- BIC(m99.08))
+m99.08_int <- (BIC(m99.08)- BIC(m99.08_full))
+
+ls_m99 <- lsmeans(m99.08, ~ssex)
+```
+
+
+```{r}
+m100.0<- lm(clean_master_log$m100.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m100.0_no_fam <- lm(clean_master_log$m100.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m100.0_no_sex <- lm(clean_master_log$m100.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m100.0_full <- lm(clean_master_log$m100.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m100.0_SD <- (BIC(m100.0_no_sex)- BIC(m100.0))
+m100.0_Fam <- (BIC(m100.0_no_fam)- BIC(m100.0))
+m100.0_int <- (BIC(m100.0)- BIC(m100.0_full))
+
+ls_m100 <- lsmeans(m100.0, ~ssex)
+```
+
+```{r}
+m101.0<- lm(clean_master_log$m101.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m101.0_no_fam <- lm(clean_master_log$m101.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m101.0_no_sex <- lm(clean_master_log$m101.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m101.0_full <- lm(clean_master_log$m101.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m101.0_SD <- (BIC(m101.0_no_sex)- BIC(m101.0))
+m101.0_Fam <- (BIC(m101.0_no_fam)- BIC(m101.0))
+m101.0_int <- (BIC(m101.0)- BIC(m101.0_full))
+
+ls_m101 <- lsmeans(m101.0, ~ssex)
+```
+
+```{r}
+m103.1<- lm(clean_master_log$m103.1~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m103.1_no_fam <- lm(clean_master_log$m103.1  ~ssex , data = clean_master_log,  na.action = na.omit)
+m103.1_no_sex <- lm(clean_master_log$m103.1  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m103.1_full <- lm(clean_master_log$m103.1  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m103.1_SD <- (BIC(m103.1_no_sex)- BIC(m103.1))
+m103.1_Fam <- (BIC(m103.1_no_fam)- BIC(m103.1))
+m103.1_int <- (BIC(m103.1)- BIC(m103.1_full))
+
+ls_m103 <- lsmeans(m103.1, ~ssex)
+```
+
+```{r}
+m105.0<- lm(clean_master_log$m105.0~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m105.0_no_fam <- lm(clean_master_log$m105.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m105.0_no_sex <- lm(clean_master_log$m105.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m105.0_full <- lm(clean_master_log$m105.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m105.0_SD <- (BIC(m105.0_no_sex)- BIC(m105.0))
+m105.0_Fam <- (BIC(m105.0_no_fam)- BIC(m105.0))
+m105.0_int <- (BIC(m105.0)- BIC(m105.0_full))
+
+ls_m105 <- lsmeans(m105.0, ~ssex)
+```
+
+```{r}
+m106.0<- lm(clean_master_log$m106.0~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m106.0_no_fam <- lm(clean_master_log$m106.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m106.0_no_sex <- lm(clean_master_log$m106.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m106.0_full <- lm(clean_master_log$m106.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m106.0_SD <- (BIC(m106.0_no_sex)- BIC(m106.0))
+m106.0_Fam <- (BIC(m106.0_no_fam)- BIC(m106.0))
+m106.0_int <- (BIC(m106.0)- BIC(m106.0_full))
+
+ls_m106 <- lsmeans(m106.0, ~ssex)
+```
+
+```{r}
+m107.0<- lm(clean_master_log$m107.0~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m107.0_no_fam <- lm(clean_master_log$m107.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m107.0_no_sex <- lm(clean_master_log$m107.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m107.0_full <- lm(clean_master_log$m107.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m107.0_SD <- (BIC(m107.0_no_sex)- BIC(m107.0))
+m107.0_Fam <- (BIC(m107.0_no_fam)- BIC(m107.0))
+m107.0_int <- (BIC(m107.0)- BIC(m107.0_full))
+
+ls_m107 <- lsmeans(m107.0, ~ssex)
+```
+
+```{r}
+m108.0 <- lm(clean_master_log$m108.0~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m108.0_no_fam <- lm(clean_master_log$m108.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m108.0_no_sex <- lm(clean_master_log$m108.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m108.0_full <- lm(clean_master_log$m108.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m108.0_SD <- (BIC(m108.0_no_sex)- BIC(m108.0))
+m108.0_Fam <- (BIC(m108.0_no_fam)- BIC(m108.0))
+m108.0_int <- (BIC(m108.0)- BIC(m108.0_full))
+
+ls_m108 <- lsmeans(m108.0, ~ssex)
+```
+
+```{r}
+m109.0 <- lm(clean_master_log$m109.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m109.0_no_fam <- lm(clean_master_log$m109.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m109.0_no_sex <- lm(clean_master_log$m109.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m109.0_full <- lm(clean_master_log$m109.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m109.0_SD <- (BIC(m109.0_no_sex)- BIC(m109.0))
+m109.0_Fam <- (BIC(m109.0_no_fam)- BIC(m109.0))
+m109.0_int <- (BIC(m109.0)- BIC(m109.0_full))
+
+ls_m109 <- lsmeans(m109.0, ~ssex)
+```
+
+```{r}
+m111.0<- lm(clean_master_log$m111.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m111.0_no_fam <- lm(clean_master_log$m111.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m111.0_no_sex <- lm(clean_master_log$m111.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m111.0_full <- lm(clean_master_log$m111.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m111.0_SD <- (BIC(m111.0_no_sex)- BIC(m111.0))
+m111.0_Fam <- (BIC(m111.0_no_fam)- BIC(m111.0))
+m111.0_int <- (BIC(m111.0)- BIC(m111.0_full))
+
+ls_m111 <- lsmeans(m111.0, ~ssex)
+```
+
+```{r}
+m113.0 <- lm(clean_master_log$m113.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m113.0_no_fam <- lm(clean_master_log$m113.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m113.0_no_sex <- lm(clean_master_log$m113.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m113.0_full <- lm(clean_master_log$m113.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m113.0_SD <- (BIC(m113.0_no_sex)- BIC(m113.0))
+m113.0_Fam <- (BIC(m113.0_no_fam)- BIC(m113.0))
+m113.0_int <- (BIC(m113.0)- BIC(m113.0_full))
+
+ls_m113 <- lsmeans(m113.0, ~ssex)
+```
+
+```{r}
+m115.0 <- lm(clean_master_log$m115.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m115.0_no_fam <- lm(clean_master_log$m115.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m115.0_no_sex <- lm(clean_master_log$m115.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m115.0_full <- lm(clean_master_log$m115.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m115.0_SD <- (BIC(m115.0_no_sex)- BIC(m115.0))
+m115.0_Fam <- (BIC(m115.0_no_fam)- BIC(m115.0))
+m115.0_int <- (BIC(m115.0)- BIC(m115.0_full))
+
+ls_m115 <- lsmeans(m115.0, ~ssex)
+```
+
+```{r}
+m119.0 <- lm(clean_master_log$m119.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m119.0_no_fam <- lm(clean_master_log$m119.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m119.0_no_sex <- lm(clean_master_log$m119.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m119.0_full <- lm(clean_master_log$m119.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m119.0_SD <- (BIC(m119.0_no_sex)- BIC(m119.0))
+m119.0_Fam <- (BIC(m119.0_no_fam)- BIC(m119.0))
+m119.0_int <- (BIC(m119.0)- BIC(m119.0_full))
+ls_m119 <- lsmeans(m119.0, ~ssex)
+```
+
+```{r}
+m121.1<- lm(clean_master_log$m121.1 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m121.1_no_fam <- lm(clean_master_log$m121.1  ~ssex , data = clean_master_log,  na.action = na.omit)
+m121.1_no_sex <- lm(clean_master_log$m121.1  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m121.1_full <- lm(clean_master_log$m121.1  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m121.1_SD <- (BIC(m121.1_no_sex)- BIC(m121.1))
+m121.1_Fam <- (BIC(m121.1_no_fam)- BIC(m121.1))
+m121.1_int <- (BIC(m121.1)- BIC(m121.1_full))
+
+ls_m121 <- lsmeans(m121.1, ~ssex)
+```
+
+```{r}
+m124.0 <- lm(clean_master_log$m124.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m124.0_no_fam <- lm(clean_master_log$m124.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m124.0_no_sex <- lm(clean_master_log$m124.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m124.0_full <- lm(clean_master_log$m124.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m124.0_SD <- (BIC(m124.0_no_sex)- BIC(m124.0))
+m124.0_Fam <- (BIC(m124.0_no_fam)- BIC(m124.0))
+m124.0_int <- (BIC(m124.0)- BIC(m124.0_full))
+
+ls_m124 <- lsmeans(m124.0, ~ssex)
+```
+
+```{r}
+m125.0 <- lm(clean_master_log$m125.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m125.0_no_fam <- lm(clean_master_log$m125.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m125.0_no_sex <- lm(clean_master_log$m125.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m125.0_full <- lm(clean_master_log$m125.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m125.0_SD <- (BIC(m125.0_no_sex)- BIC(m125.0))
+m125.0_Fam <- (BIC(m125.0_no_fam)- BIC(m125.0))
+m125.0_int <- (BIC(m125.0)- BIC(m125.0_full))
+
+ls_m125 <- lsmeans(m125.0, ~ssex)
+```
+
+```{r}
+m127.0 <- lm(clean_master_log$m127.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m127.0_no_fam <- lm(clean_master_log$m127.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m127.0_no_sex <- lm(clean_master_log$m127.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m127.0_full <- lm(clean_master_log$m127.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m127.0_SD <- (BIC(m127.0_no_sex)- BIC(m127.0))
+m127.0_Fam <- (BIC(m127.0_no_fam)- BIC(m127.0))
+m127.0_int <- (BIC(m127.0)- BIC(m127.0_full))
+
+ls_m127 <- lsmeans(m127.0, ~ssex)
+```
+
+```{r}
+m129.0<- lm(clean_master_log$m129.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m129.0_no_fam <- lm(clean_master_log$m129.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m129.0_no_sex <- lm(clean_master_log$m129.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m129.0_full <- lm(clean_master_log$m129.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m129.0_SD <- (BIC(m129.0_no_sex)- BIC(m129.0))
+m129.0_Fam <- (BIC(m129.0_no_fam)- BIC(m129.0))
+m129.0_int <- (BIC(m129.0)- BIC(m129.0_full))
+ls_m129 <- lsmeans(m129.0, ~ssex)
+```
+
+```{r}
+m130.0 <- lm(clean_master_log$m130.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m130.0_no_fam <- lm(clean_master_log$m130.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m130.0_no_sex <- lm(clean_master_log$m130.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m130.0_full <- lm(clean_master_log$m130.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m130.0_SD <- (BIC(m130.0_no_sex)- BIC(m130.0))
+m130.0_Fam <- (BIC(m130.0_no_fam)- BIC(m130.0))
+m130.0_int <- (BIC(m130.0)- BIC(m130.0_full))
+
+ls_m130 <- lsmeans(m130.0, ~ssex)
+```
+
+```{r}
+m135.1 <- lm(clean_master_log$m135.1 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m135.1_no_fam <- lm(clean_master_log$m135.1  ~ssex , data = clean_master_log,  na.action = na.omit)
+m135.1_no_sex <- lm(clean_master_log$m135.1  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m135.1_full <- lm(clean_master_log$m135.1  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m135.1_SD <- (BIC(m135.1_no_sex)- BIC(m135.1))
+m135.1_Fam <- (BIC(m135.1_no_fam)- BIC(m135.1))
+m135.1_int <- (BIC(m135.1)- BIC(m135.1_full))
+ls_m135 <- lsmeans(m135.1, ~ssex)
+```
+
+```{R}
+m137.1 <- lm(clean_master_log$m137.1 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m137.1_no_fam <- lm(clean_master_log$m137.1  ~ssex , data = clean_master_log,  na.action = na.omit)
+m137.1_no_sex <- lm(clean_master_log$m137.1  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m137.1_full <- lm(clean_master_log$m137.1  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m137.1_SD <- (BIC(m137.1_no_sex)- BIC(m137.1))
+m137.1_Fam <- (BIC(m137.1_no_fam)- BIC(m137.1))
+m137.1_int <- (BIC(m137.1)- BIC(m137.1_full))
+
+ls_m137 <- lsmeans(m137.1, ~ssex)
+```
+
+```{r}
+m139.1 <- lm(clean_master_log$m139.1 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m139.1_no_fam <- lm(clean_master_log$m139.1  ~ssex , data = clean_master_log,  na.action = na.omit)
+m139.1_no_sex <- lm(clean_master_log$m139.1  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m139.1_full <- lm(clean_master_log$m139.1  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m139.1_SD <- (BIC(m139.1_no_sex)- BIC(m139.1))
+m139.1_Fam <- (BIC(m139.1_no_fam)- BIC(m139.1))
+m139.1_int <- (BIC(m139.1)- BIC(m139.1_full))
+ls_m139 <- lsmeans(m139.1, ~ssex)
+```
+
+```{r}
+m143.0 <- lm(clean_master_log$m143.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m143.0_no_fam <- lm(clean_master_log$m143.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m143.0_no_sex <- lm(clean_master_log$m143.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m143.0_full <- lm(clean_master_log$m143.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m143.0_SD <- (BIC(m143.0_no_sex)- BIC(m143.0))
+m143.0_Fam <- (BIC(m143.0_no_fam)- BIC(m143.0))
+m143.0_int <- (BIC(m143.0)- BIC(m143.0_full))
+
+ls_m143 <- lsmeans(m143.0, ~ssex)
+```
+
+```{r}
+m149.0 <- lm(clean_master_log$m149.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m149.0_no_fam <- lm(clean_master_log$m149.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m149.0_no_sex <- lm(clean_master_log$m149.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m149.0_full <- lm(clean_master_log$m149.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m149.0_SD <- (BIC(m149.0_no_sex)- BIC(m149.0))
+m149.0_Fam <- (BIC(m149.0_no_fam)- BIC(m149.0))
+m149.0_int <- (BIC(m149.0)- BIC(m149.0_full))
+
+ls_m149 <- lsmeans(m149.0, ~ssex)
+```
+
+```{r}
+m150.0 <- lm(clean_master_log$m150.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m150.0_no_fam <- lm(clean_master_log$m150.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m150.0_no_sex <- lm(clean_master_log$m150.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m150.0_full <- lm(clean_master_log$m150.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m150.0_SD <- (BIC(m150.0_no_sex)- BIC(m150.0))
+m150.0_Fam <- (BIC(m150.0_no_fam)- BIC(m150.0))
+m150.0_int <- (BIC(m150.0)- BIC(m150.0_full))
+
+ls_m150 <- lsmeans(m150.0, ~ssex)
+```
+
+```{r}
+m151.0 <- lm(clean_master_log$m151.0 ~ssex + famid , data = clean_master_log, na.action = na.omit)
+m151.0_no_fam <- lm(clean_master_log$m151.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m151.0_no_sex <- lm(clean_master_log$m151.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m151.0_full <- lm(clean_master_log$m151.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m151.0_SD <- (BIC(m151.0_no_sex)- BIC(m151.0))
+m151.0_Fam <- (BIC(m151.0_no_fam)- BIC(m151.0))
+m151.0_int <- (BIC(m151.0)- BIC(m151.0_full))
+
+ls_m151 <- lsmeans(m151.0, ~ssex)
+```
+
+```{r}
+m163.0 <- lm(clean_master_log$m163.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m163.0_no_fam <- lm(clean_master_log$m163.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m163.0_no_sex <- lm(clean_master_log$m163.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m163.0_full <- lm(clean_master_log$m163.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m163.0_SD <- (BIC(m163.0_no_sex)- BIC(m163.0))
+m163.0_Fam <- (BIC(m163.0_no_fam)- BIC(m163.0))
+m163.0_int <- (BIC(m163.0)- BIC(m163.0_full))
+
+ls_m163 <- lsmeans(m163.0, ~ssex)
+```
+
+```{r}
+m204.0<- lm(clean_master_log$m204.0 ~ssex + famid , data = clean_master_log,  na.action = na.omit)
+m204.0_no_fam <- lm(clean_master_log$m204.0  ~ssex , data = clean_master_log,  na.action = na.omit)
+m204.0_no_sex <- lm(clean_master_log$m204.0  ~ + famid , data = clean_master_log,  na.action = na.omit)
+m204.0_full <- lm(clean_master_log$m204.0  ~ssex + famid + famid:ssex , data = clean_master_log,  na.action = na.omit)
+
+m204.0_SD <- (BIC(m204.0_no_sex)- BIC(m204.0))
+m204.0_Fam <- (BIC(m204.0_no_fam)- BIC(m204.0))
+m204.0_int <- (BIC(m204.0)- BIC(m204.0_full))
+
+ls_m204 <- lsmeans(m204.0, ~ssex)
+```
+
+```{r}
+
+perim_sex<- lm(clean_master_log$perim_wk3~ ssex + famid, data = clean_master_log,  na.action = na.omit)
+perim_full<- lm(clean_master_log$perim_wk3~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+perim_n_sex<- lm(clean_master_log$perim_wk3~ famid, data = clean_master_log,  na.action = na.omit)
+perim_n_fam_sex <- lm(clean_master_log$perim_wk3~ssex + famid, data = clean_master_log,  na.action = na.omit)
+perim_n_fam<- lm(clean_master_log$perim_wk3 ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_perim_Fam_sex <- BIC(perim_n_fam_sex)-BIC(perim_full)
+BIC_perim_Fam <- BIC(perim_n_fam)-BIC(perim_sex) 
+BIC_perim_sex <- BIC(perim_n_sex)-BIC(perim_sex)
+
+ls_perim_sex <- lsmeans(perim_sex, ~ssex)
+
+```
+
+```{r}
+
+area_sex<- lm(clean_master_log$area_wk3~ ssex + famid, data = clean_master_log,  na.action = na.omit)
+area_full<- lm(clean_master_log$area_wk3~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+area_n_sex<- lm(clean_master_log$area_wk3~ famid, data = clean_master_log,  na.action = na.omit)
+area_n_fam_sex <- lm(clean_master_log$area_wk3~ssex + famid, data = clean_master_log,  na.action = na.omit)
+area_n_fam<- lm(clean_master_log$area_wk3 ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_area_Fam_sex <- BIC(area_n_fam_sex)-BIC(area_full) #Family by sex term is not significant 
+BIC_area_Fam <- BIC(area_n_fam)-BIC(area_sex) #Family an effect
+BIC_area_sex <- BIC(area_n_sex)-BIC(area_sex) #Sex is not significant
+
+
+ls_area_sex <- lsmeans(area_sex, ~ssex)
+
+```
+
+```{r}
+
+
+circ_sex<- lm(clean_master_log$circ_wk3~ ssex + famid, data = clean_master_log,  na.action = na.omit)
+circ_full<- lm(clean_master_log$circ_wk3~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+circ_n_sex<- lm(clean_master_log$circ_wk3~ famid, data = clean_master_log,  na.action = na.omit)
+circ_n_fam_sex <- lm(clean_master_log$circ_wk3~ssex + famid, data = clean_master_log,  na.action = na.omit)
+circ_n_fam<- lm(clean_master_log$circ_wk3 ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_circ_Fam_sex <- BIC(circ_n_fam_sex)-BIC(circ_full) #Family by sex term is not significant 
+BIC_circ_Fam <- BIC(circ_n_fam)-BIC(circ_sex) #Family has no effect
+BIC_circ_sex <- BIC(circ_n_sex)-BIC(circ_sex) #Sex is not significant
+
+
+ls_circ_sex <- lsmeans(circ_sex, ~ssex)
+
+```
+
+```{r}
+
+days_sex<- lm(clean_master_log$days_gam~ ssex + famid, data = clean_master_log,  na.action = na.omit)
+days_full<- lm(clean_master_log$days_gam~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+days_n_sex<- lm(clean_master_log$days_gam~ famid, data = clean_master_log,  na.action = na.omit)
+days_n_fam_sex <- lm(clean_master_log$days_gam~ssex + famid, data = clean_master_log,  na.action = na.omit)
+days_n_fam<- lm(clean_master_log$days_gam ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_days_Fam_sex <- BIC(days_n_fam_sex)-BIC(days_full) #Family by sex term is not significant 
+BIC_days_Fam <- BIC(days_n_fam)-BIC(days_sex) #Family is significant
+BIC_days_sex <- BIC(days_n_sex)-BIC(days_sex) #Sex is not significant
+
+ls_days_sex <- lsmeans(days_sex, ~ssex)
+
+```
+
+```{r}
+
+total_sex<- lm(clean_master_log$days21~ ssex + famid , data = clean_master_log,  na.action = na.omit)
+total_full<- lm(clean_master_log$days21~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+total_n_sex<- lm(clean_master_log$days21~ famid, data = clean_master_log,  na.action = na.omit)
+total_n_fam_sex <- lm(clean_master_log$days21~ssex + famid, data = clean_master_log,  na.action = na.omit)
+total_n_fam<- lm(clean_master_log$days21 ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_total_Fam_sex <- BIC(total_n_fam_sex)-BIC(total_full) #Family by sex term is not significant 
+BIC_total_Fam <- BIC(total_n_fam)-BIC(total_sex) #Family is significant
+BIC_total_sex <- BIC(total_n_sex)-BIC(total_sex) #Sex is not significant
+
+ls_total_sex <- lsmeans(total_sex, ~ssex)
+
+```
+
+```{r}
+
+length_sex<- lm(clean_master_log$leaf_length~ ssex + famid, data = clean_master_log,  na.action = na.omit)
+length_full<- lm(clean_master_log$leaf_length~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+length_n_sex<- lm(clean_master_log$leaf_length~ famid, data = clean_master_log,  na.action = na.omit)
+length_n_fam_sex <- lm(clean_master_log$leaf_length~ssex + famid, data = clean_master_log,  na.action = na.omit)
+length_n_fam<- lm(clean_master_log$leaf_length ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_length_Fam_sex <- BIC(length_n_fam_sex)-BIC(length_full) #Family by sex term is not significant 
+BIC_length_Fam <- BIC(length_n_fam)-BIC(length_sex) #Family has no effect
+BIC_length_sex <- BIC(length_n_sex)-BIC(length_sex) #Sex is significant
+
+
+ls_length_sex <- lsmeans(length_sex, ~ssex)
+
+
+
+```
+
+
+```{r}
+
+lperm_sex<- lm(clean_master_log$leaf_perim~ ssex + famid , data = clean_master_log,  na.action = na.omit)
+lperm_full<- lm(clean_master_log$leaf_perim~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+lperm_n_sex<- lm(clean_master_log$leaf_perim~ famid , data = clean_master_log,  na.action = na.omit)
+lperm_n_fam_sex <- lm(clean_master_log$leaf_perim~ssex + famid, data = clean_master_log,  na.action = na.omit)
+lperm_n_fam<- lm(clean_master_log$leaf_perim ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_lperm_Fam_sex <- BIC(lperm_n_fam_sex)-BIC(lperm_full) #Family by sex term is not significant 
+BIC_lperm_Fam <- BIC(lperm_n_fam)-BIC(lperm_sex) #Family has no effect
+BIC_lperm_sex <- BIC(lperm_n_sex)-BIC(lperm_sex) #Sex is significant
+
+ls_lperm_sex <- lsmeans(lperm_sex, ~ssex)
+
+
+```
+
+```{r}
+
+repo_sex<- lm(clean_master_log$repro~ ssex + famid, data = clean_master_log,  na.action = na.omit)
+repo_full<- lm(clean_master_log$repro~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+repo_n_sex<- lm(clean_master_log$repro~ famid, data = clean_master_log,  na.action = na.omit)
+repo_n_fam_sex <- lm(clean_master_log$repro~ssex + famid, data = clean_master_log,  na.action = na.omit)
+repo_n_fam<- lm(clean_master_log$repro ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_repo_Fam_sex <- BIC(repo_n_fam_sex)-BIC(repo_full) #Family by sex term is not significant 
+BIC_repo_Fam <- BIC(repo_n_fam)-BIC(repo_sex) #Family has no effect
+BIC_repo_sex <- BIC(repo_n_sex)-BIC(repo_sex) #Sex is not significant
+
+ls_repo_sex <- lsmeans(repo_sex, ~ssex)
+```
+
+
+```{r}
+
+larea_sex<- lm(clean_master_log$leaf_area~ ssex + famid , data = clean_master_log,  na.action = na.omit)
+larea_full<- lm(clean_master_log$leaf_area~ ssex + famid + famid:ssex, data = clean_master_log,  na.action = na.omit)
+larea_n_sex<- lm(clean_master_log$leaf_area~ famid , data = clean_master_log,  na.action = na.omit)
+larea_n_fam_sex <- lm(clean_master_log$leaf_area~ssex + famid, data = clean_master_log,  na.action = na.omit)
+larea_n_fam<- lm(clean_master_log$leaf_area ~ssex, data = clean_master_log,  na.action = na.omit)
+
+BIC_larea_Fam_sex <- BIC(larea_n_fam_sex)-BIC(larea_full) #Family by sex term is not significant 
+BIC_larea_Fam <- BIC(larea_n_fam)-BIC(larea_sex) #Family has no effect
+BIC_larea_sex <- BIC(larea_n_sex)-BIC(larea_sex) #Sex is significant
+
+ls_larea_sex <- lsmeans(larea_sex, ~ssex)
+
+
+```
+
+```{r}
+
+#Interaction plot with box plots and connected by the mean
+voc_data_males <- male_master_log_scale
+voc_data_males$raw_repro <- NULL
+voc_data_males$area_wk3 <- NULL
+voc_data_males$perim_wk3 <- NULL
+voc_data_males$circ_wk3 <- NULL
+voc_data_males[,4:13] <- NULL
+clean_master_log_all_voc <- clean_master_log
+
+
+long_voc_data <- clean_master_log_all_voc %>% 
+  gather(., key = "voc", value = "conc", -c(famid, sampid, ssex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+voc <- long_voc_data %>% 
+  ggplot(aes(x = famid, y = conc, color = ssex)) +
+  geom_point(size=.25) +
+  stat_summary(aes(y= conc, group=ssex, color= ssex), fun.y= mean , geom= "line") +
+  facet_wrap(~voc) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(), 
+        plot.title = element_text(size = 12)) +
+  scale_color_viridis_d(begin = 0.2, end = 0.8)
+
+
+```
+
+```{r}
+#Interaction plot (scatter plot with line of best fit)
+
+#Removing samples with a value of zero
+data <-clean_master_log[clean_master_log$leaf_area > 0,]
+
+clean_master_log_adjusted <- clean_master_log
+clean_master_log_adjusted$raw_repro <- NULL
+clean_master_log_adjusted$area_rate <- NULL
+clean_master_log_adjusted$perim_rate <- NULL
+
+
+long_trait_data <- clean_master_log_adjusted[,1:12] %>% 
+  gather(., key = "trait", value = "unit", -c(famid, sampid, ssex)) %>% 
+  mutate(trait = factor(trait, levels = unique(trait)))
+
+all <- long_trait_data %>% 
+  ggplot(aes(x = famid, y = unit, color = ssex)) +
+  geom_point(size=.25) +
+  stat_summary(aes(y= unit, group=ssex, color= ssex), fun.y= mean , geom= "line")+
+  facet_wrap(~trait, scales = "free") +
+  theme(plot.title = element_text(size= 12),
+    axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_color_viridis_d(begin = 0.2)
+
+```
+
+#Calculating Sex Chromosome variation
+```{r}
+#Creating Anova function
+ssqs.fun <- function(my.data){
+
+	ni  <- dim(my.data)[1]
+	g   <- dim(my.data)[2]
+	nT  <- ni*g
+	allxs    <- as.vector(my.data)
+	xbar     <- mean(allxs)
+	xbari.vec<- apply(my.data,2,FUN=mean)
+	TSS <- (nT - 1)*var(allxs)
+	SSB <- sum( ni*(xbari.vec-rep(xbar,g))^2 )
+	SSW <- TSS-SSB
+	
+	Stot.sq <- TSS/(nT-1)
+	Sw.sq <- SSW/(nT-g)
+	Sb.sq <- SSB/(g-1)
+	Fval <- Sb.sq/Sw.sq
+	pval <- 1-pf(q=Fval,df1=(g-1),df2 = (nT-g))
+	
+	
+	return(list(TSS=TSS, SSB=SSB,SSW=SSW, Stot.sq=Stot.sq,Sw.sq=Sw.sq,Sb.sq=Sb.sq,Fval=Fval,pval=pval,df1=(g-1), df2 = (nT-g)))
+}
+
+```
+
+```{r}
+#Running a loop for ANOVAs for female data
+female_master_log_AOV <- female_master_log
+female_master_log_AOV$sampid <- NULL
+female_master_log_AOV$ssex <- NULL
+
+male_master_log_AOV <- male_master_log
+male_master_log_AOV$sampid <- NULL
+male_master_log_AOV$ssex <- NULL
+
+FITS_Female <- vector(mode = "list", length = 82) #Make a list to store the results
+
+for(i in 2:83){
+  
+  FITS_Female[[i]] <-summary(aov(female_master_log_AOV[[i]] ~ female_master_log_AOV[,1])) #model
+}
+
+FITS_Female
+
+#Males
+FITS_Male <- vector(mode = "list", length = 85) #Make a list to store the results
+
+
+for(i in 2:83){
+  
+  FITS_Male[[i]] <-summary(aov(male_master_log_AOV[[i]] ~ male_master_log_AOV[,1])) #model
+}
+
+FITS_Male
+
+```
+
+#############################################################################################################
+#Covariance matrix for female life history triats
+```{r}
+mynamestheme <- theme(plot.title = element_text(family = "Arial", face = "bold", size = (20)), 
+                 legend.title = element_text(colour = "black",  face = "bold.italic", family = "Arial"), 
+                 legend.text = element_text(face = "italic", colour="black",family = "Arial"), 
+                  axis.title = element_text(family = "Arial", size = (13), colour = "Black"),
+                  axis.text = element_text(family = "Arial", colour = "black", size = (10)))
+
+
+clean_master_log_scaled[,1:15] %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:15), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_fems_traits
+
+cov_mat_fems_traits %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  mynamestheme +
+  ggtitle("Female Life History Trait Covariance Matrix")+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+#Covariance matrix for female volatiles and traits
+```{r}
+female_master_log_scale %>% 
+  group_by(famid) %>% 
+  mutate_at(c(5:85), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_fems_all
+
+cov_mat_fems_all %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  mynamestheme +
+  ggtitle("female VOC history trait covariance matrix")+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000", limit= c(-100,400))+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+```{r}
+#Male life history
+clean_master_log_scaled[,1:12] %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(4:12), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_male_traits
+
+cov_mat_male_traits %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  mynamestheme +
+  ggtitle("male life history trait covariance matrix")+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+#Male VOCs
+male_master_log_scale %>% 
+  group_by(famid) %>% 
+  mutate_at(c(4:85), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() %>% 
+  select(-famid) %>% 
+  cov(use = "na.or.complete") %>% 
+  as.data.frame() -> cov_mat_males_all
+
+cov_mat_males_all %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  mynamestheme +
+  ggtitle("male VOC and trait history trait covariance matrix")+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+#Correlation matrix female traits with adjusted pvalues
+```{r}
+
+cors <- cor(female_master_log_scale[,4:85])
+cor.mtest <- function(mat, conf.level = 0.95){
+mat <- as.matrix(mat)
+n <- ncol(mat)
+p.mat <- lowCI.mat <- uppCI.mat <- matrix(NA, n, n)
+diag(p.mat) <- 0
+diag(lowCI.mat) <- diag(uppCI.mat) <- 1
+for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+        tmp <- cor.test(mat[, i], mat[, j], conf.level = conf.level)
+        p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+        lowCI.mat[i, j] <- lowCI.mat[j, i] <- tmp$conf.int[1]
+        uppCI.mat[i, j] <- uppCI.mat[j, i] <- tmp$conf.int[2]
+    }
+}
+return(list(p.mat, lowCI.mat, uppCI.mat))
+}
+res1 <- cor.mtest(female_master_log_scale[,4:85], 0.95)
+res2 <- cor.mtest(female_master_log_scale[,4:85], 0.99)
+
+female_all_cor <- corrplot(cors, p.mat = res1[[1]], sig.level=0.05, insig="blank", cl.align="r", tl.cex=0.6,  type="lower", tl.srt=60, cl.ratio=0.1)
+
+#Adjusting the pvalues
+pAdj <- p.adjust(c(res1[[1]]), method = "fdr")
+resAdj <- matrix(pAdj, ncol = dim(res1[[1]])[1])
+female_all_corr_adj <- corrplot(cors, p.mat = resAdj, sig.level=0.05, insig="blank", cl.align="r", tl.cex=1.5, tl.srt=1.5, cl.ratio=0.1, title = "Female adjusted correlation matrix", mar=c(0,0,1,0), type = "lower")
+
+#write.csv(female_all_corr_adj, "desktop/moss_matrix/female_all_corr_adj.csv")
+
+#females_life <- corrplot(cor_mat_fems_traits, title= "Correlation matrix females life history traits", tl.col = "black", mar=c(0,2,1,1))
+```
+
+
+#Build correlation matrix with R package
+```{r}
+library(evolqg)
+
+female_master_log_scale <- as.data.frame(female_master_log_scale)
+options(contrasts=c("contr.sum","contr.poly"))
+model= lm(as.matrix(female_master_log_scale[,4:85])~ female_master_log_scale[,1])
+female_G <- CalculateMatrix(model)
+
+#corrplot(female_G, is.corr = FALSE, type = "lower")
+
+Bfemale_G <- BayesianCalculateMatrix(model)
+
+
+male_master_log_scale <- as.data.frame(male_master_log_scale)
+options(contrasts=c("contr.sum","contr.poly"))
+model_2= lm(as.matrix(male_master_log_scale[,4:85])~ male_master_log_scale[,1])
+male_G <- CalculateMatrix(model_2)
+Bmale_G <- BayesianCalculateMatrix(model_2)
+
+
+MatrixCompare(female_G, male_G)
+MeanMatrixStatistics(female_G)
+
+
+
+```
+
+
+#Correlation matrix male all with adjusted pvalues using FDR
+```{r}
+#Male all correlation matrix
+cors_male <- cor(male_master_log_scale[,4:85])
+cor.mtest <- function(mat, conf.level = 0.95){
+mat <- as.matrix(mat)
+n <- ncol(mat)
+p.mat <- lowCI.mat <- uppCI.mat <- matrix(NA, n, n)
+diag(p.mat) <- 0
+diag(lowCI.mat) <- diag(uppCI.mat) <- 1
+for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+        tmp <- cor.test(mat[, i], mat[, j], conf.level = conf.level)
+        p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+        lowCI.mat[i, j] <- lowCI.mat[j, i] <- tmp$conf.int[1]
+        uppCI.mat[i, j] <- uppCI.mat[j, i] <- tmp$conf.int[2]
+    }
+}
+return(list(p.mat, lowCI.mat, uppCI.mat))
+}
+res1 <- cor.mtest(male_master_log_scale[,4:85], 0.95)
+res2 <- cor.mtest(male_master_log_scale[,4:85], 0.99)
+
+male_all_cor <- corrplot(cors_male, p.mat = res1[[1]], sig.level=0.05, insig="blank", cl.align="r", tl.cex=1,  type="lower", tl.srt=1, cl.ratio=0.1)
+
+#Adjusting the pvalues
+pAdj <- p.adjust(c(res1[[1]]), method = "fdr")
+resAdj <- matrix(pAdj, ncol = dim(res1[[1]])[1])
+male_all_corr_adj <- corrplot(cors_male, p.mat = resAdj, sig.level=0.05, insig="blank", cl.align="r", tl.cex=1.5, type="lower", tl.srt=1.5, cl.ratio=0.1, title = "Male correlation matrix", mar=c(0,0,1,0))
+
+
+cov_mat_males_all <- as.matrix(cov_mat_males_all)
+cor_mat_males_all <- (cov2cor(cov_mat_males_all))
+#males_all <- corrplot(cor_mat_males_all, title= "Correlation matrix males voc", tl.col = "black", mar=c(0,2,1,1))
+```
+
+
+#All traits by filtering with only families shared between females and females. Plotted females vs females
+All traits filtered females v females covariance
+```{r}
+clean_master_log_scaled %>% 
+  filter(ssex == "m") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(4:85), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct() -> male_data
+
+
+clean_master_log_scaled %>% 
+  filter(ssex == "f") %>% 
+  group_by(famid) %>% 
+  mutate_at(c(4:85), mean, na.rm = TRUE) %>% 
+  ungroup() %>% 
+  select(-c(sampid, ssex)) %>% 
+  distinct()  %>% 
+  filter(famid %in% male_data$famid)-> female_data
+
+# Use only the families that have both males and females
+
+
+test_cov <- cov(male_data[,2:83], female_data[,2:83], use = "pairwise.complete.obs")
+test_cor <- cor(male_data[,2:83], female_data[,2:83])
+
+
+test_cov %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+  labs(x="female", y="male")+
+  ggtitle("Covariance matrix of all for males vs females")+
+  mynamestheme+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+```{r}
+#Correlation matrix without adjustment
+test_cor %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "x") %>% 
+  gather(key = "y", value = "value", -x) %>% 
+  ggplot(aes(x = x, y = y, fill = value)) +
+  geom_tile() +
+labs(x="female", y="male")+
+  ggtitle("Correlation matrix of all traits for males and females")+
+  mynamestheme+
+  scale_fill_gradient2(low = "#0000FF", mid = "#FFFFFF", high ="#FF0000")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+#Subtracting correlation matrices
+```{r}
+#Subtracting male and female all matrices without having adjusted the data
+
+as.matrix(cor_mat_fems_all) #Set data as matrix
+as.matrix(cor_mat_males_all) #Set data as matrix
+
+#Plot
+minus_mat_all <-(cor_mat_males_all - cor_mat_fems_all)
+minus_mat_all <- abs(minus_mat_all)
+minus_mat_all[upper.tri(minus_mat_all)] <- NA
+corrplot(minus_mat_all,  tl.col = "black", tl.srt = 60, tl.cex = .8, mar=c(0,2,1,1), title = "Difference between males and females life history traits and volatiles") 
+
+minus_mat_all[minus_mat_all == 1] <- NA #drop perfect
+minus_mat_all[abs(minus_mat_all) < 0.5] <- NA # drop less than abs(0.5)
+minus_mat_all_sort <- na.omit(melt(minus_mat_all)) # melt! 
+minus_mat_all_sort[order((minus_mat_all_sort$value)),] # sort
+
+#Subtracted male and female adjusted matrices using FDR
+
+as.matrix(male_all_corr_adj) #Set data as matrix
+write.csv(male_all_corr_adj, "cleandata/male_all_corr_adj.csv")
+
+as.matrix(female_all_corr_adj) #Set data as matrix
+write.csv(female_all_corr_adj, "cleandata/female_all_corr_adj.csv")
+
+
+#Plot
+minus_mat_all_adj <-(male_all_corr_adj - female_all_corr_adj)
+minus_mat_all_adj <- abs(minus_mat_all_adj)
+minus_mat_all_adj[upper.tri(minus_mat_all_adj)] <- NA
+corrplot(minus_mat_all_adj,  tl.col = "black", tl.srt = 60, tl.cex = 1, mar=c(0,2,1,1), title = "Difference between males and females life history traits and volatiles after adjusted") 
+
+minus_mat_all_adj[minus_mat_all_adj == 1] <- NA #drop perfect
+minus_mat_all_adj[abs(minus_mat_all_adj) < 0.5] <- NA # drop less than abs(0.5)
+minus_mat_all_adj_sort <- na.omit(melt(minus_mat_all_adj)) # melt! 
+minus_mat_all_adj_sort[order((minus_mat_all_adj_sort$value)),] # sort
+
+
+```
+
+
+#Boxplot of leaf traits (Sexually dimorphic)
+```{r}
+
+par(mar = c(8,4,8,4))
+
+LL <-   ggplot(clean_master_log_scaled, mapping= aes(x =ssex,  y = leaf_length , fill = ssex)) +
+        geom_boxplot(alpha=0.7, lwd=1, outlier.size = 5) +
+        #ggtitle("Leaf Length\n") +
+    xlab("\nSex") +
+    ylab("Leaf length (mm)\n")+
+        theme_bw() +
+        theme(plot.title = element_text(size = 60, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 40, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 40),legend.position = "none",
+              plot.margin = margin(2, 2, 2, 2, "cm")) +
+        scale_fill_brewer(palette = "Greys")
+LL+theme(legend.position = "none")
+
+
+LA <-   ggplot(clean_master_log_scaled, mapping= aes(x =ssex,  y = leaf_area , fill = ssex)) +
+        geom_boxplot(alpha=0.7, lwd=1, outlier.size = 5) +
+        #ggtitle("Leaf Length\n") +
+    xlab("\nSex") +
+    ylab("Leaf Area (mm^2)\n")+
+        theme_bw() +
+        theme(plot.title = element_text(size = 60, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 40, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 40), legend.position = "none",
+              plot.margin = margin(2, 2, 2, 2, "cm")) +
+        scale_fill_brewer(palette = "Greys")
+LA+theme(legend.position = "none")
+
+LP <-   ggplot(clean_master_log_scaled, mapping= aes(x =ssex,  y = leaf_perim , fill = ssex)) +
+        geom_boxplot(alpha=0.7, lwd=1, outlier.size = 5) +
+       # ggtitle("Leaf Perimeter\n") +
+    xlab("\nSex") +
+    ylab("Leaf Perimeter (mm)\n")+
+        theme_bw() +
+        theme(plot.title = element_text(size = 60, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 40, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 40),legend.position = "none",
+              plot.margin = margin(2, 2, 2, 2, "cm")) +
+        scale_fill_brewer(palette = "Greys")
+LP+theme(legend.position = "none")
+
+library(gridExtra)
+margin= theme(plot.margin = unit(c(2,2,2,2), "cm"))
+grid.arrange(LA, LL, LP, ncol=3)
+```
+
+#Box plots of Volatiles (Sexually dimorphic)
+```{r}
+#Making a matrix with all sexually dimorphic VOCs
+Sex_VOC <- cbind( as.factor(clean_master_log$famid), as.factor(clean_master_log$sampid), as.factor(clean_master_log$ssex), clean_master_log$m47.01 ,clean_master_log$m42.03,clean_master_log$m46.03,clean_master_log$m49.05,clean_master_log$m31.99,clean_master_log$m41.03,clean_master_log$m31.01,clean_master_log$m49.02,clean_master_log$m45.03,clean_master_log$m30.99,clean_master_log$m81.06,clean_master_log$m33.03,clean_master_log$m97.00,clean_master_log$m43.01,clean_master_log$m39.03,clean_master_log$m69.06,clean_master_log$m34.02,clean_master_log$m57.02,clean_master_log$m49.99,clean_master_log$m44.06,clean_master_log$m37.02,clean_master_log$m95.00,clean_master_log$m163.0,clean_master_log$m100.0,clean_master_log$m107.0,clean_master_log$m105,clean_master_log$m85.06,clean_master_log$m87.04,clean_master_log$m83.05,clean_master_log$m47.98,clean_master_log$m103.1,clean_master_log$m71.03, clean_master_log$m61.02,clean_master_log$m106.0,clean_master_log$m125.0,clean_master_log$m151.0,clean_master_log$m101.0,clean_master_log$m139.1, clean_master_log$m135.1, clean_master_log$m137.1, clean_master_log$57)
+
+Sex_VOC <- as.data.frame(Sex_VOC)
+
+colnames(Sex_VOC) <- c("family","Sample","sex","m47.01","m42.03","m46.03","m49.05","m31.99","m41.03","m31.01","m49.02","m45.03","m30.99","m81.06","m33.03","m97.00","m43.01","m39.03","m69.06","m34.02","m57.02","m49.99",
+"m44.06","m37.02","m95.00","m163.0","m100.0","m107.0","m105","m85.06","m87.04",
+"m83.05","m47.98","m103.1","m71.03","m61.02","m106.0","m125.0","m151.0","m101.0","m139.1", "m113.0", "m137.1", "m57.05", "m143.0", "m111.0")
+```
+
+#Box plots of all sexually dimorphic VOCs
+```{r}
+long_Sexually_data <- Sex_VOC %>% 
+  gather(., key = "voc", value = "conc", -c(family, Sample, sex)) %>% 
+  mutate(voc = factor(voc, levels = unique(voc)))
+
+long_Sexually_data$sex <- as.factor(long_Sexually_data$sex)
+
+library(gghalves)
+
+voc_SD <- long_Sexually_data %>% 
+  ggplot(clean_master_log_scaled, mapping= aes(x =voc,  y = conc , fill = sex)) +
+  geom_boxplot(alpha=0.7, lwd=1, outlier.size = 5, fatten= 4) +
+ # facet_wrap(~voc) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(), 
+        plot.title = element_text(size = 12)) +
+  scale_color_viridis_d(begin = 0.2, end = 0.8)+
+  theme(plot.title = element_text(size = 40, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 25, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 25),legend.position = "none",
+              plot.margin = margin(2, 2, 2, 2, "cm")) +
+        scale_fill_brewer(palette = "Greys")
+```
+
+#Reading in data for variance plots
+```{r}
+Variances <- read_csv("/Users/lesliekollar/Desktop/Moss_matrix/cleandata/ALL_output_2.csv")
+Variances_2 <- rbind(Variances[1:6,], Variances[80:82,])
+```
+
+#Sex Chrom Variances
+```{r}
+Female_Sexchromo_VOC <- Variances[7:79,] %>% 
+  ggplot(aes(x = `%var among fam female`)) +
+  geom_histogram(position= "identity", linetype= "solid", size= 1, color= "black", binwidth = .05)+
+  #ggtitle("Female Family Variation for Volatile Production\n") +
+    xlab("\n Female Family Variation for VOCs") +
+    ylab("Frequency\n")+
+  scale_x_continuous(limits = c(0,1.3))+
+  scale_y_continuous(limits = c(0,25))+
+   #geom_density(alpha=.2, fill="#FF6666")+
+        theme_bw() +
+        theme(#plot.title = element_text(size = 18, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 12, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 12, angle = 45),
+              axis.text.y=element_text(size = 12, angle = 45),
+              plot.margin = margin(1, 1, 1, 1, "cm")) +
+        scale_fill_manual(values = c("#736F6E", "#C0C0C0"))
+  
+
+Male_Sexchromo_VOC <- Variances[7:79,] %>% 
+  ggplot(aes(x = `%var among fam male`)) +
+  geom_histogram(position= "identity", linetype= "solid", size= 1, color= "black", binwidth = .05)+
+  #ggtitle("Male Family Variation for Volatile Production\n") +
+    xlab("\n Male Family Variation for VOCs") +
+    ylab("Frequency\n")+
+  scale_x_continuous(limits = c(0,1.3))+
+  scale_y_continuous(limits = c(0,25))+
+   #geom_density(alpha=.2, fill="#FF6666")+
+        theme_bw() +
+        theme(#plot.title = element_text(size = 18, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 12, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 12, angle = 45),
+              axis.text.y=element_text(size = 12, angle = 45),
+              plot.margin = margin(1, 1, 1, 1, "cm")) +
+        scale_fill_manual(values = c("#736F6E", "#C0C0C0"))
+
+ggarrange(Female_Sexchromo_VOC, Male_Sexchromo_VOC,
+          ncol = 2, nrow = 1,  align = "hv", 
+          widths = c(2, 2), heights = c(2, 2),
+          common.legend =FALSE, labels = "auto",
+          font.label = list(size= 12, color= "black"))
+```
+```{r}
+Female_Sexchromo_Life <- Variances_2 %>% 
+  ggplot(aes(x = `%var among fam female`)) +
+  geom_histogram(position= "identity", linetype= "solid", size= 1, color= "black", binwidth = .03)+
+  #ggtitle("Female Family Variation for Volatile Production\n") +
+    xlab("\n Female Family Variation for VOCs") +
+    ylab("Frequency\n")+
+ scale_x_continuous(limits = c(0,.8))+
+ scale_y_continuous(limits = c(0,3))+
+   #geom_density(alpha=.2, fill="#FF6666")+
+        theme_bw() +
+        theme(#plot.title = element_text(size = 18, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 12, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 12, angle = 45),
+              axis.text.y=element_text(size = 12, angle = 45),
+              plot.margin = margin(1, 1, 1, 1, "cm")) +
+        scale_fill_manual(values = c("#736F6E", "#C0C0C0"))
+  
+
+Male_Sexchromo_Life <- Variances_2 %>% 
+  ggplot(aes(x = `%var among fam male`)) +
+  geom_histogram(position= "identity", linetype= "solid", size= 1, color= "black", binwidth = .03)+
+  #ggtitle("Male Family Variation for Volatile Production\n") +
+    xlab("\n Male Family Variation for VOCs") +
+    ylab("Frequency\n")+
+ scale_x_continuous(limits = c(0,.8))+
+ scale_y_continuous(limits = c(0,3))+
+   #geom_density(alpha=.2, fill="#FF6666")+
+        theme_bw() +
+        theme(#plot.title = element_text(size = 18, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 12, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 12, angle = 45),
+              axis.text.y=element_text(size = 12, angle = 45),
+              plot.margin = margin(1, 1, 1, 1, "cm")) +
+        scale_fill_manual(values = c("#736F6E", "#C0C0C0"))
+
+ggarrange(Female_Sexchromo_Life, Male_Sexchromo_Life,
+          ncol = 2, nrow = 1,  align = "hv", 
+          widths = c(2, 2), heights = c(2, 2),
+          common.legend =FALSE, labels = "auto",
+          font.label = list(size= 12, color= "black"))
+```
+
+
+```{r}
+Female_Family_VOC <- Variances[7:79,] %>% 
+  ggplot(aes(x = Female_Family_Variance)) +
+  geom_histogram(position= "identity", linetype= "solid", size= 1, color= "black", binwidth = 1)+
+  #ggtitle("Female Family Variation for Volatile Production\n") +
+    xlab("\n Female Family Variation for VOCs") +
+    ylab("Frequency\n")+
+  scale_x_continuous(limits = c(0,12))+
+   #geom_density(alpha=.2, fill="#FF6666")+
+        theme_bw() +
+        theme(#plot.title = element_text(size = 18, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 12, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 12, angle = 45),
+              axis.text.y=element_text(size = 12, angle = 45),
+              plot.margin = margin(1, 1, 1, 1, "cm")) +
+        scale_fill_manual(values = c("#736F6E", "#C0C0C0"))
+  
+
+Male_Family_VOC <- Variances[7:79,] %>% 
+  ggplot(aes(x = Male_Family_Variance)) +
+  geom_histogram(position= "identity", linetype= "solid", size= 1, color= "black", binwidth = 1)+
+  #ggtitle("Male Family Variation for Volatile Production\n") +
+    xlab("\n Male Family Variation for VOCs") +
+    ylab("Frequency\n")+
+  scale_x_continuous(limits = c(0,12))+
+   #geom_density(alpha=.2, fill="#FF6666")+
+        theme_bw() +
+        theme(#plot.title = element_text(size = 18, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 12, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 12, angle = 45),
+              axis.text.y=element_text(size = 12, angle = 45),
+              plot.margin = margin(1, 1, 1, 1, "cm")) +
+        scale_fill_manual(values = c("#736F6E", "#C0C0C0"))
+
+ggarrange(Female_Family_VOC, Male_Family_VOC,
+          ncol = 2, nrow = 1,  align = "hv", 
+          widths = c(2, 2), heights = c(2, 2),
+          common.legend =FALSE, labels = "auto",
+          font.label = list(size= 12, color= "black"))
+```
+```{r}
+
+Female_Family_Life <- Variances_2 %>% 
+  ggplot(aes(x = Female_Family_Variance)) +
+  geom_histogram(position= "identity", linetype= "solid", size= 1, color= "black", binwidth = .5)+
+  #ggtitle("Female Family Variation for Volatile Production\n") +
+    xlab("\n Female Family Variation for VOCs") +
+    ylab("Frequency\n")+
+ scale_x_continuous(limits = c(-1,15))+
+   #geom_density(alpha=.2, fill="#FF6666")+
+        theme_bw() +
+        theme(#plot.title = element_text(size = 18, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 12, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 12, angle = 45),
+              axis.text.y=element_text(size = 12, angle = 45),
+              plot.margin = margin(1, 1, 1, 1, "cm")) +
+        scale_fill_manual(values = c("#736F6E", "#C0C0C0"))
+  
+
+Male_Family_Life <- Variances_2 %>% 
+  ggplot(aes(x = Male_Family_Variance)) +
+  geom_histogram(position= "identity", linetype= "solid", size= .5, color= "black", binwidth = .5)+
+  #ggtitle("Male Family Variation for Volatile Production\n") +
+    xlab("\n Male Family Variation for VOCs") +
+    ylab("Frequency\n")+
+  scale_x_continuous(limits = c(-1,15))+
+   #geom_density(alpha=.2, fill="#FF6666")+
+        theme_bw() +
+        theme(#plot.title = element_text(size = 18, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 12, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 12, angle = 45),
+              axis.text.y=element_text(size = 12, angle = 45),
+              plot.margin = margin(1, 1, 1, 1, "cm")) +
+        scale_fill_manual(values = c("#736F6E", "#C0C0C0"))
+
+ggarrange(Female_Family_Life, Male_Family_Life,
+          ncol = 2, nrow = 1,  align = "hv", 
+          widths = c(2, 2), heights = c(2, 2),
+          common.legend =FALSE, labels = "auto",
+          font.label = list(size= 12, color= "black"))
+```
+
+#Scatter plot comparing male and female volatile variances 
+Males are always more viarable now much of this is due to autosomal vs sex chromosome variants
+```{r, fig.width = 40, fig.height = 20, dpi=400}
+
+ggplot(Variances, aes( x=Variance_Females, y= Variance_Males))+
+  geom_point(size=15)+
+    ggtitle("Male and Female Variation for Volatile Production\n") +
+    ylab("\nMale Variation\n") +
+    xlab("\nFemale Variation\n")+
+  geom_abline(intercept = 0, slope = 1, color="red", 
+                 linetype="dashed", size=3)+
+   theme_bw() +
+        theme(plot.title = element_text(size = 100, family = "Times", face = "bold", hjust = 0.5),
+              text = element_text(size = 60, family = "Times"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 60),
+              axis.text.y=element_text(size = 60),
+              plot.margin = margin(2, 2, 2, 2, "cm"))
+
+```
+
+
+#Trade offs for VOCs and life hisotry traits
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$leaf_area > 0,]
+D_scatter <- ggplot(data, aes(x= data$leaf_area, y= data$m61.02, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=leaf_area, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m61.02, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_8 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_8 <- annotate_figure(plot_8,
+                top = text_grob("Trade offs for m61.02 and leaf area\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m61.02", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Leaf area", color = "black", face = "bold", size = 20))
+```
+
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$leaf_perim > 0,]
+D_scatter <- ggplot(data, aes(x= data$leaf_perim, y= data$m61.02, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=leaf_perim, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m61.02, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_9 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_9 <-annotate_figure(plot_9,
+                top = text_grob("Trade offs for m61.02 and leaf perimeter\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m61.02", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Leaf perimeter", color = "black", face = "bold", size = 20))
+
+
+```
+
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$leaf_area > 0,]
+D_scatter <- ggplot(data, aes(x= data$leaf_area, y= data$m69.00, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=leaf_area, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m69.00, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_10 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_10 <- annotate_figure(plot_10,
+                top = text_grob("Trade offs for m69 and leaf area\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m69", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Leaf area", color = "black", face = "bold", size = 20))
+
+
+```
+
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$leaf_area > 0,]
+D_scatter <- ggplot(data, aes(x= data$leaf_area, y= data$m107.0, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=leaf_area, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m107.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_11 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_11 <-annotate_figure(plot_11,
+                top = text_grob("Trade offs for m107 and leaf area\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m107", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Leaf area", color = "black", face = "bold", size = 20))
+```
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$leaf_perim > 0,]
+D_scatter <- ggplot(data, aes(x= data$leaf_perim, y= data$m107.0, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=leaf_perim, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m107.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_12 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_12 <-annotate_figure(plot_12,
+                top = text_grob("Trade offs for m107 and leaf perimeter\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m107", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Leaf perimeter", color = "black", face = "bold", size = 20))
+```
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$leaf_perim > 0,]
+D_scatter <- ggplot(data, aes(x= data$leaf_perim, y= data$m125.0, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=leaf_perim, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m125.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_13 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_13 <-annotate_figure(plot_13,
+                top = text_grob("Trade offs for m125 and leaf area\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m125", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Leaf area", color = "black", face = "bold", size = 20))
+```
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$leaf_area > 0,]
+D_scatter <- ggplot(data, aes(x= data$leaf_area, y= data$m135.1, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=leaf_area, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m135.1, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_14 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_14 <-annotate_figure(plot_14,
+                top = text_grob("Trade offs for m135 and leaf area\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m135", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Leaf area", color = "black", face = "bold", size = 20))
+```
+
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$leaf_perim > 0,]
+D_scatter <- ggplot(data, aes(x= data$leaf_perim, y= data$m135.1, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=leaf_perim, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m135.1, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_15 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_15 <- annotate_figure(plot_15,
+                top = text_grob("Trade offs for m135 and leaf perim\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m135", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Leaf perimeter", color = "black", face = "bold", size = 20))
+```
+
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$leaf_area > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x= days21, y= m86.03, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=days21, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m86.03, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_16 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_16 <-annotate_figure(plot_16,
+                top = text_grob("Trade offs for m86 and total gametophores\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m86", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("Total gametophores", color = "black", face = "bold", size = 20))
+```
+
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$circ_wk3 > 0,]
+D_scatter <- ggplot(data, aes(x= data$circ_wk3, y= data$m49.02, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=circ_wk3, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m49.02, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_17 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_17 <-annotate_figure(plot_17,
+                top = text_grob("Trade offs for m49.02 and circularity\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m49.02", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("circularity", color = "black", face = "bold", size = 20))
+```
+
+```{r}
+data <-clean_master_log_scaled[clean_master_log_scaled$circ_wk3 > 0,]
+D_scatter <- ggplot(data, aes(x= data$circ_wk3, y= data$m49.05, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(data, aes(x=circ_wk3, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(data, aes(x=m49.05, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_18 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_18 <- annotate_figure(plot_18,
+                top = text_grob("Trade offs for m49.05 and circularity\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m49.05", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("circularity", color = "black", face = "bold", size = 20))
+```
+
+```{r}
+
+D_scatter <- ggplot(clean_master_log_scaled, aes(x= repro, y= m98.00, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=repro, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m98.00, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_19 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_19 <-annotate_figure(plot_19,
+                top = text_grob("Trade offs for m98 and repro\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m98", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("repro", color = "black", face = "bold", size = 20))
+```
+
+
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$repro > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x= repro, y= m125.0, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=repro, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m125.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_20 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_20 <-annotate_figure(plot_20,
+                top = text_grob("Trade offs for m125 and repro\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m125", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("repro", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+#Arranging plots
+
+jpeg("TradeOffs.jpeg")
+
+ggarrange(plot_8, plot_9,plot_10,plot_11, plot_12,plot_13,plot_14,plot_15,plot_16,plot_17,plot_18,plot_19,plot_20,
+          ncol = 5, nrow = 3,  align = "hv", 
+          widths = c(2, 2), heights = c(2, 2),
+          common.legend = TRUE, labels = "auto",
+          font.label = list(size= 35, color= "black"))
+
+dev.off()
+```
+
+#Branch points in biochemical pathways
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$repro > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m49.99, y= m81.06, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+   
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m49.99, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m81.06, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_22 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)
+
+plot_22 <- annotate_figure(plot_22,
+                top = text_grob("Trade offs for m49.99 and m81.06\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m49.99", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m81.06", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$repro > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m37.02, y= m98.00, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+   
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m37.02, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m98.00, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_21 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)
+
+plot_21 <- annotate_figure(plot_21,
+                top = text_grob("Trade offs for m98 and m37\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m98", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m37", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$repro > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m37.02, y= m150.0, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+   
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m37.02, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m150.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_7 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)
+
+plot_7 <- annotate_figure(plot_7,
+                top = text_grob("Trade offs for m150 and m37\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m150", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m37", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$repro > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m47.01, y= m150.0, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+   
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m47.01, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m150.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_6 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)
+
+plot_6 <- annotate_figure(plot_6,
+                top = text_grob("Trade offs for m150 and m47\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m150", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m47", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$repro > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m49.99, y= m150.0, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+   
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m49.99, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m150.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_23 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)
+
+plot_23 <- annotate_figure(plot_23,
+                top = text_grob("Trade offs for m150 and m49.99\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m150", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m49.99", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+#Arranging plots
+
+jpeg("Branchpoints.jpeg")
+
+ggarrange(plot_7,plot_23, plot_6,plot_21, plot_22,
+          ncol = 3, nrow = 2,  align = "hv", 
+          widths = c(2, 2), heights = c(2, 2),
+          common.legend = TRUE, labels = "auto",
+          font.label = list(size= 35, color= "black"))
+
+dev.off()
+
+```
+
+#Males and females with differences between compound correlations
+
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$repro > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m86.03, y= m115.0, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m86.03, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m115.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_2 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_2 <- annotate_figure(plot_2,
+                top = text_grob("Trade offs for m115 and m86\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m115", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m86", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+#data <-clean_master_log_scaled[clean_master_log_scaled$repro > 0,]
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m107.0, y= m49.99, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m107.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m49.99, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_3 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_3 <-annotate_figure(plot_3,
+                top = text_grob("Trade offs for m107 and m49.99\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m107", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m49.99", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m63.02, y= m81.06, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m63.02, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m81.06, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_4 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)+
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+
+plot_4 <-  annotate_figure(plot_4,
+                top = text_grob("Trade offs for m81.06 and m63.02\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m81.06", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m63.02", color = "black", face = "bold", size = 20))
+
+
+```
+
+```{r}
+D_scatter <- ggplot(clean_master_log_scaled, aes(x=m127.0, y= m47.98, color= ssex))+
+  geom_point(size= 5)+
+  geom_smooth(method = "lm", se=FALSE, fullranage= TRUE)+
+  scale_color_manual(values = c("grey85", "grey30")) + 
+   theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position=c(0,1), legend.justification=c(0,1))+
+  theme(legend.title = element_text(colour = "black", size= 100, face = "bold")) +
+        theme(legend.text = element_text(colour= "black", size=80, face="bold"))+
+        theme(legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+D_x_density <- ggplot(clean_master_log_scaled, aes(x=m127.0, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) + 
+theme(legend.position = "none")
+
+D_y_density <- ggplot(clean_master_log_scaled, aes(x=m47.98, fill=ssex)) +
+  geom_density(alpha=.5) + 
+  scale_fill_manual(values = c("grey85", "grey30")) +
+ theme(axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  axis.text.x = element_blank(),
+  axis.text.y = element_blank())+
+  theme(legend.position = "none")
+
+D_x_density <- D_x_density + clean_theme()
+D_y_density <- D_x_density + clean_theme()
+
+plot_5 <-  ggarrange(D_x_density, NULL, D_scatter, D_y_density, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE) +
+  theme(plot.margin = unit(c(3,3,3,3), "lines"))
+ 
+
+plot_5 <-annotate_figure(plot_5,
+                top = text_grob("Trade offs for m127 and m47.98\n", color = "black", face = "bold", size = 30),
+                left = text_grob("m127", color = "black", rot = 90, face = "bold", size = 20),
+                bottom = text_grob("m47.98", color = "black", face = "bold", size = 20))
+
+
+```
+
+
+```{r, fig.width = 40, fig.height = 20, dpi=400}
+#Arranging plots
+jpeg("VOC_Corr_Male_female.jpeg")
+
+ggarrange(plot_2, plot_3, plot_4, plot_5,
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 2), heights = c(2, 2),
+          common.legend = TRUE, labels = "auto",
+          font.label = list(size= 35, color= "black"))
+
+dev.off()
+```
+
